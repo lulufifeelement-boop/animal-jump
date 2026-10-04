@@ -6,8 +6,8 @@
 <title>Animal Jump</title>
 <style>
 :root{--c1:#ffb04a;--c2:#ff8a1f;--bg:#0a1e3c}
-html,body{margin:0;height:100%;overflow:hidden;background:#bfe3ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none}
-canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+html,body{margin:0;height:100%;overflow:hidden;background:#bfe3ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;touch-action:auto;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;background:linear-gradient(transparent 25%,rgba(10,30,60,.6));z-index:10}
 .ov.h{display:none;pointer-events:none}
 #load{background:linear-gradient(#7cc6ff,#e9f6ff);z-index:99}
@@ -26,8 +26,10 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 #msg{position:fixed;left:0;right:0;top:25%;text-align:center;font-size:clamp(28px,7vw,56px);font-weight:900;text-shadow:0 3px 12px rgba(0,0,0,.6);pointer-events:none;opacity:0;transition:opacity .25s;z-index:5}
 #dbg{position:fixed;left:8px;bottom:8px;font:11px/1.35 monospace;background:rgba(0,0,0,.7);padding:6px 8px;border-radius:6px;white-space:pre;display:none;pointer-events:none;z-index:100;text-align:left}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .4s;z-index:20}
+#shop{touch-action:auto;overflow:hidden}
+#sg{touch-action:pan-y}
 
-.grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;margin:15px 0;width:90%;max-width:450px;max-height:58vh;overflow-y:auto;pointer-events:auto}
+.grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;margin:15px 0;width:90%;max-width:450px;max-height:58vh;overflow-y:auto;pointer-events:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .card{background:rgba(255,255,255,.1);border-radius:12px;padding:15px;text-align:center;border:2px solid transparent;transition:all 0.2s;backdrop-filter:blur(4px)}
 .card img{width:100%;aspect-ratio:1;border-radius:10px;display:block;margin-bottom:6px;cursor:pointer;background:#9fd4ff}
 .card .tp{cursor:pointer}
@@ -724,7 +726,7 @@ addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault();
 addEventListener('keyup', e => { if (e.code === 'Space') up(); });
 addEventListener('blur', () => { held = false; want = false; cancelCharge(); if (app === 'PLAY' && ph !== 'DEAD' && !document.hidden) setPause(true); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { held = false; want = false; cancelCharge(); if (app === 'PLAY' && ph !== 'DEAD') setPause(true); } });
-addEventListener('touchmove', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); }, { passive: false }); addEventListener('contextmenu', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+addEventListener('touchmove', e => { if (e.target.tagName !== 'INPUT' && !e.target.closest('#sg')) e.preventDefault(); }, { passive: false }); addEventListener('contextmenu', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
 
 let gpd = false; let gamepadBlocked = false;
 function gpoll() { try { if (typeof navigator.getGamepads !== 'function') return; const pads = navigator.getGamepads(); const g = pads && pads[0]; if (!g) return; const b = !!(g.buttons && g.buttons[0] && g.buttons[0].pressed); if (b && !gpd) down(); if (!b && gpd) up(); gpd = b; } catch (e) { if (!gamepadBlocked) { gamepadBlocked = true; console.info('Gamepad API unavailable'); } } }
