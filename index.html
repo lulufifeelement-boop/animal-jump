@@ -814,6 +814,7 @@ function platMat(key, color, kind, rough=.85, emissive=0, ei=0) {
  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tex, bumpMap: tex, bumpScale: kind === 'crystal' ? .16 : kind === 'stone' || kind === 'ancient' ? .10 : .055, roughness: rough, metalness: kind === 'crystal' || kind === 'ice' ? .08 : 0, emissive, emissiveIntensity: ei });
  return PLAT_CACHE.mat[mk] = m;
 }
+const rrngSafe = (rr, a, b) => a + (b - a) * rr.next();
 function platMesh(p) {
  const th = Math.min(TH.length - 1, Math.floor(p.idx / 15) % TH.length);
  const g = new THREE.Group(), r = p.r, rr = new RNG(hash(77, p.idx));
@@ -825,69 +826,175 @@ function platMesh(p) {
   {top:0x477f4a, dirt:0x4a4030, rock:0x5f625b},
   {top:0x6652b7, dirt:0x403657, rock:0x625c78}
  ][style];
+
+ const topKind = style === 4 ? 'ancient' : style === 3 ? 'moss' : style === 2 ? 'crystal' : style === 1 ? 'stone' : 'grass';
+ const sideKind = style === 4 ? 'ancient' : 'stone';
+
  const geomTop = shape === 1
-   ? new THREE.BoxGeometry(1.8, .14, 1.8)
-   : new THREE.CylinderGeometry(1, 1, .14, style === 1 ? 8 : style === 2 ? 6 : 20);
+   ? new THREE.BoxGeometry(1.8, .16, 1.8)
+   : new THREE.CylinderGeometry(1, 1, .16, style === 1 ? 8 : style === 2 ? 8 : 24);
  const geomBand = shape === 1
-   ? new THREE.BoxGeometry(1.7, .44, 1.7)
-   : new THREE.CylinderGeometry(1, .93, .44, style === 1 ? 8 : style === 2 ? 6 : 20);
- const t = new THREE.Mesh(geomTop, platMat('t'+style, C.top, style===4?'ancient':style===3?'moss':style===2?'crystal':style===1?'stone':'grass', .78));
- t.scale.set(r * .98, 1, r * .98); t.position.y = -.03; t.receiveShadow = true;
- const band = new THREE.Mesh(geomBand, platMat('b'+style, C.dirt, style===4?'ancient':style===3?'moss':style===1?'stone':'stone', .94));
- band.scale.set(r, 1, r); band.position.y = -.32; band.castShadow = band.receiveShadow = true;
+   ? new THREE.BoxGeometry(1.72, .48, 1.72)
+   : new THREE.CylinderGeometry(1, .91, .48, style === 1 ? 8 : style === 2 ? 8 : 24);
+
+ const t = new THREE.Mesh(geomTop, platMat('t'+style, C.top, topKind, .74));
+ t.scale.set(r * .98, 1, r * .98); t.position.y = -.02; t.receiveShadow = true; t.castShadow = false;
+ const band = new THREE.Mesh(geomBand, platMat('b'+style, C.dirt, sideKind, .92));
+ band.scale.set(r, 1, r); band.position.y = -.31; band.castShadow = band.receiveShadow = true;
  g.add(t, band);
 
- const rockGeo = new THREE.DodecahedronGeometry(1, 0);
- const rockMat = new THREE.MeshStandardMaterial({ color:C.rock, roughness:.96, flatShading:true });
- const shardGeo = new THREE.ConeGeometry(1, 1.6, style === 2 || style === 4 ? 6 : 5);
- const pebbleGeo = new THREE.IcosahedronGeometry(1, 0);
- const addRock = (a, d, s, y=-.72) => {
-   const q = new THREE.Mesh(rockGeo, rockMat); q.scale.set(s * rr.rng(.8,1.15), s * rr.rng(.7,1.25), s * rr.rng(.8,1.1));
-   q.position.set(Math.cos(a)*d, y - s*.18, Math.sin(a)*d); q.rotation.set(rr.rng(0,3),rr.rng(0,3),rr.rng(0,3)); q.castShadow = true; g.add(q);
- };
- for (let i=0;i<3;i++) { const a=rr.rng(0,6.28), d=r*rr.rng(.42,.82); addRock(a,d,r*rr.rng(.12,.22),-.72); }
+ // Deep floating-island core: wide at the top, narrowing to a pointed rock below.
+ const core = new THREE.Mesh(
+   new THREE.ConeGeometry(1, 1.65, shape === 1 ? 8 : 12),
+   new THREE.MeshStandardMaterial({ color:C.rock, roughness:.97, flatShading:true })
+ );
+ core.scale.set(r * .98, r, r * .98);
+ core.rotation.x = Math.PI;
+ core.position.y = -.98 * r;
+ core.castShadow = core.receiveShadow = true;
+ g.add(core);
 
- const rim = new THREE.Mesh(new THREE.TorusGeometry(r*.93, Math.max(.035,r*.035), 6, shape===1?20:28), platMat('rim'+style, style===4?0xb9f2ad:0x9adf70, style===4?'grass':'grass', .76));
- rim.rotation.x = Math.PI/2; rim.position.y = .045; rim.scale.set(shape===1?1:.99,1,1); rim.receiveShadow = true; g.add(rim);
+ // Large fractured rock chunks make the silhouette irregular instead of a flat disk.
+ const chunkGeo = new THREE.DodecahedronGeometry(1, 0);
+ const chunkMat = new THREE.MeshStandardMaterial({ color:C.rock, roughness:.98, flatShading:true });
+ for (let i = 0; i < 7; i++) {
+   const a = rr.rng(0, 6.28), d = r * rr.rng(.52, .92);
+   const q = new THREE.Mesh(chunkGeo, chunkMat);
+   const sx = r * rr.rng(.18, .34), sy = r * rr.rng(.22, .48), sz = r * rr.rng(.16, .32);
+   q.scale.set(sx, sy, sz);
+   q.position.set(Math.cos(a) * d, -r * rr.rng(.62, 1.25), Math.sin(a) * d);
+   q.rotation.set(rr.rng(-.4,.4), rr.rng(0,6.28), rr.rng(-.4,.4));
+   q.castShadow = q.receiveShadow = true;
+   g.add(q);
+ }
+
+ // Smaller edge stones break the hard cylindrical side.
+ const pebbleGeo = new THREE.IcosahedronGeometry(1, 0);
+ for (let i = 0; i < 5; i++) {
+   const a = rr.rng(0, 6.28), d = r * rr.rng(.78, 1.02), q = new THREE.Mesh(pebbleGeo, chunkMat);
+   const sz = r * rrngSafe(rr, .07, .14);
+   q.scale.set(sz * 1.5, sz, sz * 1.2);
+   q.position.set(Math.cos(a) * d, -r * rrngSafe(rr, .22, .52), Math.sin(a) * d);
+   q.rotation.set(rr.rng(0,6.28), rr.rng(0,6.28), rr.rng(0,6.28));
+   q.castShadow = true;
+   g.add(q);
+ }
+
+ // Natural grass/stone lip.
+ const rim = new THREE.Mesh(
+   new THREE.TorusGeometry(r*.93, Math.max(.035,r*.034), 7, shape===1?20:30),
+   platMat('rim'+style, style===4?0xb9f2ad:0x9adf70, 'grass', .72)
+ );
+ rim.rotation.x = Math.PI/2; rim.position.y = .055; g.add(rim);
 
  const anim = [];
+
  if (style === 0) {
-   const blade = new THREE.ConeGeometry(r*.035, r*.18, 4);
-   for (let i=0;i<Math.max(5,Math.round(r*6));i++) {
-     const a=rr.rng(0,6.28), d=r*rr.rng(.45,.9), b=new THREE.Mesh(blade,platMat('grassblade',0x5fae3d,'grass',.9)); b.position.set(Math.cos(a)*d,.1,Math.sin(a)*d); b.rotation.z=rr.rng(-.35,.35); b.rotation.y=rr.rng(0,6.28); g.add(b);
+   const bladeGeo = new THREE.ConeGeometry(r*.032, r*.2, 4);
+   for (let i=0;i<Math.max(7,Math.round(r*7));i++) {
+     const a=rr.rng(0,6.28), d=r*rr.rng(.43,.91);
+     const b=new THREE.Mesh(bladeGeo,platMat('grassblade',0x5fae3d,'grass',.9));
+     b.position.set(Math.cos(a)*d,.1,Math.sin(a)*d);
+     b.rotation.z=rr.rng(-.35,.35); b.rotation.y=rr.rng(0,6.28);
+     g.add(b); anim.push({o:b,s:rr.rng(0,6.28),sway:.12,base: b.rotation.z});
    }
-   for(let i=0;i<2;i++){
-     const a=rr.rng(0,6.28), d=r*rr.rng(.25,.7), st=new THREE.Mesh(new THREE.CylinderGeometry(r*.012,r*.018,r*.16,5),platMat('stem',0x3f8e3a,'grass',.95));
+   for(let i=0;i<3;i++){
+     const a=rr.rng(0,6.28), d=r*rr.rng(.2,.72);
+     const st=new THREE.Mesh(new THREE.CylinderGeometry(r*.012,r*.018,r*.17,5),platMat('stem'+i,0x3f8e3a,'grass',.95));
      st.position.set(Math.cos(a)*d,.12,Math.sin(a)*d); g.add(st);
-     const fl=new THREE.Mesh(new THREE.SphereGeometry(r*.07,8,6),platMat('flower'+i,[0xffd85c,0xff8bd0][i],'grass',.7)); fl.scale.set(1,.55,1); fl.position.set(st.position.x,.23,st.position.z); fl.castShadow=true; g.add(fl);
+     const fl=new THREE.Mesh(new THREE.SphereGeometry(r*.07,8,6),platMat('flower'+i,[0xffd85c,0xff8bd0,0xffffff][i],'grass',.7));
+     fl.scale.set(1,.55,1); fl.position.set(st.position.x,.23,st.position.z); fl.castShadow=true; g.add(fl);
+     anim.push({o:fl,s:rr.rng(0,6.28),bob:.028,y:fl.position.y});
    }
  } else if (style === 1) {
-   const dry = platMat('dry',0xd7c66a,'stone',.92);
-   for(let i=0;i<3;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.4,.82), stem=new THREE.Mesh(new THREE.ConeGeometry(r*.018,r*.18,4),dry); stem.position.set(Math.cos(a)*d,.13,Math.sin(a)*d); stem.rotation.z=rr.rng(-.4,.4); g.add(stem); }
-   for(let i=0;i<3;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.25,.78), pm=new THREE.Mesh(pebbleGeo,platMat('goldpebble',0xf0c14b,'stone',.7)); pm.scale.setScalar(r*rr.rng(.06,.11)); pm.position.set(Math.cos(a)*d,.1,Math.sin(a)*d); pm.castShadow=true; g.add(pm); }
+   // Dry rocky island with warm mineral flecks and a few slowly rising embers.
+   const dry = platMat('dry',0xd7c66a,'stone',.9);
+   for(let i=0;i<4;i++){
+     const a=rr.rng(0,6.28), d=r*rr.rng(.35,.82);
+     const stem=new THREE.Mesh(new THREE.ConeGeometry(r*.018,r*.2,4),dry);
+     stem.position.set(Math.cos(a)*d,.13,Math.sin(a)*d); stem.rotation.z=rr.rng(-.4,.4); g.add(stem);
+   }
+   for(let i=0;i<3;i++){
+     const a=rr.rng(0,6.28), d=r*rrngSafe(rr,.22,.78), pm=new THREE.Mesh(pebbleGeo,platMat('goldpebble',0xf0c14b,'stone',.68));
+     pm.scale.setScalar(r*rrngSafe(rr,.06,.11)); pm.position.set(Math.cos(a)*d,.1,Math.sin(a)*d); pm.castShadow=true; g.add(pm);
+   }
+   const emberMat = new THREE.MeshStandardMaterial({color:0xff8b22, emissive:0xff3d00, emissiveIntensity:1.5, roughness:.5});
+   for(let i=0;i<2;i++){
+     const e=new THREE.Mesh(new THREE.SphereGeometry(r*.028,6,5),emberMat);
+     e.position.set(rr.rng(-r*.5,r*.5),-r*.2,rr.rng(-r*.5,r*.5)); g.add(e);
+     anim.push({o:e,s:rr.rng(0,6.28),bob:.18,y:e.position.y});
+   }
  } else if (style === 2) {
-   const cm = platMat('crystal',0x5bd8ff,'crystal',.3,0x1b7cff,.9);
-   for(let i=0;i<2;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.3,.68), cr=new THREE.Mesh(shardGeo,cm); cr.scale.set(r*rr.rng(.12,.18),r*rr.rng(.45,.8),r*rr.rng(.12,.18)); cr.position.set(Math.cos(a)*d,.18,Math.sin(a)*d); cr.rotation.set(rr.rng(-.18,.18),rr.rng(0,6.28),rr.rng(-.12,.12)); cr.castShadow=true; g.add(cr); anim.push({o:cr,y:cr.position.y,s:rr.rng(0,6.28),amp:.05,spin:.45}); }
-   const ring=new THREE.Mesh(new THREE.TorusGeometry(r*.48,r*.025,6,24),platMat('moonring',0x8ab8ff,'crystal',.45,0x397dff,.65)); ring.rotation.x=Math.PI/2; ring.position.y=.095; g.add(ring); anim.push({o:ring,y:ring.position.y,s:rr.rng(0,6.28),spin:.25,rot:1});
+   const cm = platMat('crystal',0x5bd8ff,'crystal',.26,0x1b7cff,.95);
+   for(let i=0;i<3;i++){
+     const a=rr.rng(0,6.28), d=r*rrngSafe(rr,.27,.7), cr=new THREE.Mesh(new THREE.ConeGeometry(1,1.7,6),cm);
+     cr.scale.set(r*rrngSafe(rr,.11,.18),r*rrngSafe(rr,.42,.82),r*rrngSafe(rr,.11,.18));
+     cr.position.set(Math.cos(a)*d,.18,Math.sin(a)*d);
+     cr.rotation.set(rr.rng(-.18,.18),rr.rng(0,6.28),rr.rng(-.12,.12)); cr.castShadow=true; g.add(cr);
+     anim.push({o:cr,s:rr.rng(0,6.28),bob:.045,pulse:.055,y:cr.position.y,baseX:cr.scale.x,baseY:cr.scale.y,baseZ:cr.scale.z});
+   }
+   const ring=new THREE.Mesh(new THREE.TorusGeometry(r*.48,r*.024,6,28),platMat('moonring',0x8ab8ff,'crystal',.4,0x397dff,.8));
+   ring.rotation.x=Math.PI/2; ring.position.y=.10; g.add(ring); anim.push({o:ring,spin:.45,rot:1});
+   g.userData.flowTex = ring.material.map;
  } else if (style === 3) {
-   const moss = platMat('moss',0x70b64c,'moss',.92);
-   for(let i=0;i<4;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.55,.92), leaf=new THREE.Mesh(new THREE.SphereGeometry(r*.11,8,6),moss); leaf.scale.set(1.3,.45,.8); leaf.position.set(Math.cos(a)*d,.06,Math.sin(a)*d); leaf.rotation.y=a; g.add(leaf); }
-   for(let i=0;i<2;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.25,.7), st=new THREE.Mesh(new THREE.CylinderGeometry(r*.045,r*.05,r*.13,7),platMat('mushstem',0xe7d7b4,'stone',.9)); st.position.set(Math.cos(a)*d,.08,Math.sin(a)*d); const cap=new THREE.Mesh(new THREE.SphereGeometry(r*.11,8,6),platMat('mushcap',i?0xf06a4f:0xc95765,'stone',.8)); cap.scale.set(1,.55,1); cap.position.set(st.position.x,.19,st.position.z); g.add(st,cap); }
+   const moss = platMat('moss',0x70b64c,'moss',.9);
+   for(let i=0;i<5;i++){
+     const a=rr.rng(0,6.28), d=r*rrngSafe(rr,.5,.93), leaf=new THREE.Mesh(new THREE.SphereGeometry(r*.1,8,6),moss);
+     leaf.scale.set(1.4,.43,.85); leaf.position.set(Math.cos(a)*d,.065,Math.sin(a)*d); leaf.rotation.y=a; g.add(leaf);
+     anim.push({o:leaf,s:rr.rng(0,6.28),sway:.09,base:leaf.rotation.z});
+   }
+   for(let i=0;i<2;i++){
+     const a=rr.rng(0,6.28), d=r*rrngSafe(rr,.25,.7), st=new THREE.Mesh(new THREE.CylinderGeometry(r*.045,r*.05,r*.13,7),platMat('mushstem',0xe7d7b4,'stone',.9));
+     st.position.set(Math.cos(a)*d,.08,Math.sin(a)*d);
+     const cap=new THREE.Mesh(new THREE.SphereGeometry(r*.11,8,6),platMat('mushcap',i?0xf06a4f:0xc95765,'stone',.8));
+     cap.scale.set(1,.55,1); cap.position.set(st.position.x,.19,st.position.z); g.add(st,cap);
+     anim.push({o:cap,s:rr.rng(0,6.28),bob:.025,y:cap.position.y});
+   }
  } else {
-   const cm = platMat('magic',0x8f75ff,'crystal',.28,0x6a35ff,1.1);
-   for(let i=0;i<3;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.35,.78), cr=new THREE.Mesh(shardGeo,cm); cr.scale.set(r*rr.rng(.09,.15),r*rr.rng(.35,.65),r*rr.rng(.09,.15)); cr.position.set(Math.cos(a)*d,.16,Math.sin(a)*d); cr.rotation.set(rr.rng(-.2,.2),rr.rng(0,6.28),rr.rng(-.2,.2)); g.add(cr); anim.push({o:cr,y:cr.position.y,s:rr.rng(0,6.28),amp:.07,spin:.35}); }
-   const rune=new THREE.Mesh(new THREE.TorusGeometry(r*.36,r*.03,6,28),platMat('rune',0x7df5ff,'crystal',.3,0x33ddff,1.2)); rune.rotation.x=Math.PI/2; rune.position.y=.105; g.add(rune); anim.push({o:rune,y:rune.position.y,s:0,rot:.9});
-   for(let i=0;i<4;i++){ const a=i*Math.PI/2+.4, dot=new THREE.Mesh(new THREE.OctahedronGeometry(r*.055,0),platMat('runeDot',0xd9ffff,'crystal',.18,0x9effff,1.5)); dot.position.set(Math.cos(a)*r*.45,.13,Math.sin(a)*r*.45); g.add(dot); anim.push({o:dot,y:dot.position.y,s:i,amp:.025,spin:.7}); }
+   const cm = platMat('magic',0x8f75ff,'crystal',.25,0x6a35ff,1.15);
+   for(let i=0;i<4;i++){
+     const a=rr.rng(0,6.28), d=r*rrngSafe(rr,.32,.8), cr=new THREE.Mesh(new THREE.ConeGeometry(1,1.7,6),cm);
+     cr.scale.set(r*rrngSafe(rr,.08,.15),r*rrngSafe(rr,.3,.68),r*rrngSafe(rr,.08,.15));
+     cr.position.set(Math.cos(a)*d,.16,Math.sin(a)*d); cr.rotation.set(rr.rng(-.2,.2),rr.rng(0,6.28),rr.rng(-.2,.2)); g.add(cr);
+     anim.push({o:cr,s:rr.rng(0,6.28),bob:.05,pulse:.05,y:cr.position.y,baseX:cr.scale.x,baseY:cr.scale.y,baseZ:cr.scale.z});
+   }
+   const rune=new THREE.Mesh(new THREE.TorusGeometry(r*.36,r*.03,6,28),platMat('rune',0x7df5ff,'crystal',.28,0x33ddff,1.25));
+   rune.rotation.x=Math.PI/2; rune.position.y=.105; g.add(rune); anim.push({o:rune,rot:.9});
+   g.userData.flowTex = rune.material.map;
+   for(let i=0;i<4;i++){
+     const a=i*Math.PI/2+.4, dot=new THREE.Mesh(new THREE.OctahedronGeometry(r*.055,0),platMat('runeDot',0xd9ffff,'crystal',.18,0x9effff,1.6));
+     dot.position.set(Math.cos(a)*r*.45,.13,Math.sin(a)*r*.45); g.add(dot); anim.push({o:dot,s:i,amp:.025,spin:.7,y:dot.position.y});
+   }
  }
- const underN = style===4 ? 5 : 4;
- for(let i=0;i<underN;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.15,.75), q=new THREE.Mesh(new THREE.ConeGeometry(r*rr.rng(.11,.18),r*rr.rng(.55,.95),5),rockMat); q.position.set(Math.cos(a)*d,-.72-r*rr.rng(.15,.28),Math.sin(a)*d); q.rotation.z=rr.rng(-.35,.35); q.rotation.y=rr.rng(0,6.28); q.castShadow=true; g.add(q); }
- if (style===0 || style===3) {
-   const vineMat=platMat('vine',0x3d8f45,'moss',.95);
-   for(let i=0;i<2;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.35,.75), vine=new THREE.Mesh(new THREE.CylinderGeometry(r*.018,r*.028,r*rr.rng(.35,.7),5),vineMat); vine.position.set(Math.cos(a)*d,-.85-Math.abs(Math.sin(a))*r*.25,Math.sin(a)*d); vine.rotation.z=rr.rng(-.35,.35); g.add(vine); }
+
+ // Hanging roots and vines make the platform feel suspended in air.
+ const rootMat = platMat('root'+style, style===0 || style===3 ? 0x4b6a2e : C.dirt, style===0 || style===3 ? 'moss' : sideKind, .96);
+ const rootCount = style===0 || style===3 ? 4 : 2;
+ for(let i=0;i<rootCount;i++){
+   const a=rr.rng(0,6.28), d=r*rrngSafe(rr,.42,.88), rg=new THREE.Group();
+   rg.position.set(Math.cos(a)*d,-.48,Math.sin(a)*d);
+   for(let j=0;j<3;j++){
+     const seg=new THREE.Mesh(new THREE.CylinderGeometry(r*.018*(1-j*.16),r*.028*(1-j*.12),r*(.24-.03*j),5),rootMat);
+     seg.position.y=-r*(.13+j*.21); seg.rotation.z=rr.rng(-.22,.22); rg.add(seg);
+   }
+   g.add(rg); anim.push({o:rg,s:rr.rng(0,6.28),sway:.18,base:rg.rotation.z});
  }
- if (p.gift) { const gg = new THREE.Group(), bm = M(0xff3344, 0.5), bx = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), bm); bx.position.y = 0.4; bx.castShadow = true; const rm = M(0xffdd33, 0.3), rb1 = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.2), rm); rb1.position.y = 0.4; const rb2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.82, 0.82), rm); rb2.position.y = 0.4; const bow = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.08, 8, 16), rm); bow.position.y = 0.8; bow.rotation.x = 1.57; gg.add(bx, rb1, rb2, bow); gg.position.set(0, 0, 0); gg.userData.gift = true; g.add(gg); }
- g.userData.pAnim = anim;
- g.position.set(p.x, p.y, p.z); return g;
+
+ // Small floating fragments around the underside reinforce the airborne feeling.
+ for(let i=0;i<4;i++){
+   const a=rr.rng(0,6.28), d=r*rrngSafe(rr,1.0,1.35), fl=new THREE.Mesh(new THREE.DodecahedronGeometry(r*rrngSafe(rr,.035,.075),0),chunkMat);
+   fl.position.set(Math.cos(a)*d,-r*rrngSafe(rr,.3,.9),Math.sin(a)*d); fl.userData.floatRock=1; g.add(fl);
+   anim.push({o:fl,s:rrngSafe(rr,0,6.28),bob:.07,spin:.35,y:fl.position.y});
+ }
+
+ if (p.gift) {
+   const gg = new THREE.Group(), bm = M(0xff3344, 0.5), bx = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), bm); bx.position.y = 0.4; bx.castShadow = true;
+   const rm = M(0xffdd33, 0.3), rb1 = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.2), rm); rb1.position.y = 0.4;
+   const rb2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.82, 0.82), rm); rb2.position.y = 0.4;
+   const bow = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.08, 8, 16), rm); bow.position.y = 0.8; bow.rotation.x = 1.57;
+   gg.add(bx, rb1, rb2, bow); gg.userData.gift = true; g.add(gg);
+ }
+ g.userData.pAnim = anim; g.position.set(p.x,p.y,p.z); return g;
 }
 
 let app = 'LOAD', ph = 'IDLE', paused = false, seed = 0, plats = [], cur = 0, maxIdx = 0, combo = 0, perfects = 0, jumps = 0, lives = 3, held = false, want = false, t0 = 0, pa = 0, pst = 0, cP = 0, cue = [0, 0, 0], res = null, jt = 0, lt = 0, dtm = 0, landZ = '', msgT = 0, lastCp = 0, lastRes = null, dbgT = 0, fpsA = 60, fpsT = 0, fallCam = null, nextGiftIdx = 10, doubleCoins = 0, flightT = 0, flightStart = null, flightEnd = null, balMesh = null, giftPrize = -1;
@@ -1062,11 +1169,15 @@ function update(dt, now) {
  for (const [i, m] of pm) {
   m.children.forEach(c => { if (c.userData && c.userData.gift) c.rotation.y += dt * 1.5; });
   if (m.userData && m.userData.pAnim) m.userData.pAnim.forEach(a => {
-    const u = a.o, q = Math.sin(now * .002 + a.s);
-    if (a.amp) u.position.y = a.y + q * a.amp;
+    const u = a.o, q = Math.sin(now * .0018 + (a.s || 0));
+    if (a.amp) u.position.y = (a.y || u.position.y) + q * a.amp;
+    if (a.bob) u.position.y = (a.y || u.position.y) + q * a.bob;
+    if (a.sway) u.rotation.z = (a.base || 0) + q * a.sway;
     if (a.spin) u.rotation.y += dt * a.spin;
     if (a.rot) u.rotation.z += dt * a.rot;
+    if (a.pulse) { const z = 1 + (0.07 + a.pulse) * (.5 + .5*q); u.scale.set((a.baseX || 1)*z, (a.baseY || 1)*z, (a.baseZ || 1)*z); }
   });
+  if (m.userData && m.userData.flowTex) m.userData.flowTex.offset.x = (now * .00003) % 1;
 }
  
  switch (ph) {
