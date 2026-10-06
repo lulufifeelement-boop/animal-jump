@@ -483,6 +483,10 @@ function tryClaw(r, Tl) {
  clawCh--; abHud(); run.ok = false; Object.assign(r, { out: 'SUCCESS', zone: 'EDGE', landed: Tl, t, x: q.x, z: q.z, claw: 1, cy }); AU.blip(900, .15, 'square', .1, 400);
 }
 
+function legsIK(yaw, foot) {
+ const S = gsc, c = Math.cos(yaw), sn = Math.sin(yaw);
+ fox.userData.legs.forEach((L, i) => { const F = foot(i, L), dx = F.x - pos.x, dz = F.z - pos.z; trexLegs(L, { x: (dx * c - dz * sn) / S, y: (F.y - pos.y) / S, z: (dx * sn + dz * c) / S }); });
+}
 function startGiant() {
  const n = [4, 5, 6][lv() - 1]; ensureTo(cur + n + G.gen.ahead); const pts = [], yaw = [], gp = [];
  for (let i = 0; i <= n; i++) pts.push(plats[cur + i]);
