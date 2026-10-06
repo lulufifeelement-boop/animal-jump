@@ -51,7 +51,7 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 <button id="pz" class="s">II</button>
 <div id="msg"></div><div id="dbg"></div><div id="fade"></div>
 
-<div id="load" class="ov"><h1>Animal Jump</h1><p id="lt">Connecting to Cloud…</p></div>
+<div id="load" class="ov"><h1>Animal Jump</h1><p id="lt">Starting game…</p></div>
 
 <div id="menu" class="ov h">
   <h1>Animal Jump</h1>
@@ -131,9 +131,8 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 <script type="module">
 "use strict";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+let initializeApp = null, getAuth = null, signInAnonymously = null;
+let getFirestore = null, doc = null, getDoc = null, setDoc = null, collection = null, getDocs = null;
 
 const LANG = {
  en: {
@@ -205,6 +204,22 @@ let db = null, auth = null, userId = null, isCloudReady = false;
 
 async function initCloud() {
     try {
+        // Firebase is loaded dynamically so a cloud/CDN problem can never block the game UI.
+        const [fbApp, fbAuth, fbStore] = await Promise.all([
+            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js"),
+            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js"),
+            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js")
+        ]);
+        initializeApp = fbApp.initializeApp;
+        getAuth = fbAuth.getAuth;
+        signInAnonymously = fbAuth.signInAnonymously;
+        getFirestore = fbStore.getFirestore;
+        doc = fbStore.doc;
+        getDoc = fbStore.getDoc;
+        setDoc = fbStore.setDoc;
+        collection = fbStore.collection;
+        getDocs = fbStore.getDocs;
+
         const appInfo = initializeApp(firebaseConfig);
         auth = getAuth(appInfo);
         db = getFirestore(appInfo);
