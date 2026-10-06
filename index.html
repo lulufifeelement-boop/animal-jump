@@ -470,7 +470,7 @@ const AB = {
  fox: { i: '🎁' }, bunny: { i: '🥕' }, raccoon: { i: '🦝' }, pig: { i: '🪙' }, capybara: { i: '🌿' }, panda: { i: '☯️' }, dino: { i: '🦖' }, cat: { i: '🐾' }, bear: { i: '🛡️' }, goose: { i: '🪿' }
 };
 const upLv = k => (save.up && save.up[k]) || 1, lv = () => upLv(curSkin()), upCost = k => Math.round(Math.max(AN[k].p, 200) * (upLv(k) === 1 ? .5 : 1));
-let stompN = 0, dinoC = 0, clawCh = 1, abM10 = 0, abM20 = 0, cFrac = 0;
+let stompCount = 0, dinoC = 0, clawCh = 1, abM10 = 0, abM20 = 0, cFrac = 0;
 const curSkin = () => (run && run.tmp) || save.skin;
 const AB_on = id => !!run && !run.classic && curSkin() === id;
 function endTmp() { if (run && run.tmp) { run.tmp = null; const ry = fox.rotation.y; buildAnimal(save.skin); fox.rotation.y = ry; abHud(); } }
@@ -867,7 +867,7 @@ function toMenu() { renderQ();
  updateTexts(); if (!plats.length || lives <= 0) newRun();
 }
 
-function play(s) { AU.init(); AU.click(); const cls = !!(s || urlSeed); nextSeed = s || urlSeed; urlSeed = 0; newRun(); run.classic = cls; clawCh = 1; abM10 = abM20 = 0; cFrac = 0; if (AB_on('bear')) { lives = 6; updHearts(); } stompN = dinoC = 0; giant = null; giantQ = false; gsc = 1; abHud(); app = 'PLAY'; show('menu', 0); show('go', 0); $('hud').style.display = 'block'; $('pz').style.display = 'block'; msg(T('hold'), 1200); }
+function play(s) { AU.init(); AU.click(); const cls = !!(s || urlSeed); nextSeed = s || urlSeed; urlSeed = 0; newRun(); run.classic = cls; clawCh = 1; abM10 = abM20 = 0; cFrac = 0; if (AB_on('bear')) { lives = 6; updHearts(); } stompCount = dinoC = 0; giant = null; giantQ = false; gsc = 1; abHud(); app = 'PLAY'; show('menu', 0); show('go', 0); $('hud').style.display = 'block'; $('pz').style.display = 'block'; msg(T('hold'), 1200); }
 
 function renderShop() {
  if (!THUMB._d) { THUMB._d = 1; try { makeThumbs(); } catch (e) { console.error(e); } }
@@ -1019,7 +1019,7 @@ window.addEventListener('error', e => { if (app === 'LOAD') { $('lt').textConten
 
 function boot() {
  if (!window.THREE) { $('lt').textContent = 'Could not load Three.js.'; return; }
- try { build(); $('dbg').style.display = save.dbg ? 'block' : 'none'; AU.m || 0; cs.p = new THREE.Vector3(0, 6, 10); cs.l = new THREE.Vector3(); newRun(); toMenu(); setTimeout(() => { $('load').style.opacity = 0; $('load').style.transition = 'opacity .5s'; setTimeout(() => show('load', 0), 500); }, 400); requestAnimationFrame(frame); } catch (e) { console.error(e); $('lt').textContent = 'WebGL is not available.'; }
+ try { build(); $('dbg').style.display = save.dbg ? 'block' : 'none'; AU.m || 0; cs.p = new THREE.Vector3(0, 6, 10); cs.l = new THREE.Vector3(); newRun(); toMenu(); setTimeout(() => { $('load').style.opacity = 0; $('load').style.transition = 'opacity .5s'; setTimeout(() => show('load', 0), 500); }, 400); requestAnimationFrame(frame); } catch (e) { console.error(e); $('lt').textContent = 'Ошибка запуска: ' + (e && e.message ? e.message : String(e)); }
 }
 
 // Start sequence
