@@ -6,9 +6,8 @@
 <title>Animal Jump</title>
 <style>
 :root{--c1:#ffb04a;--c2:#ff8a1f;--bg:#0a1e3c}
-html,body{margin:0;height:100%;overflow:hidden;background:#bfe3ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;touch-action:none;user-select:none;-webkit-user-select:none}
-input{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;touch-action:manipulation}
-canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+html,body{margin:0;height:100%;overflow:hidden;background:#bfe3ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;touch-action:auto;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
 .ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;background:linear-gradient(transparent 25%,rgba(10,30,60,.6));z-index:10}
 .ov.h{display:none;pointer-events:none}
 #load{background:linear-gradient(#7cc6ff,#e9f6ff);z-index:99}
@@ -24,17 +23,19 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 #hearts{font-size:24px;margin-top:4px;letter-spacing:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,.5))}
 #ab{font-size:14px;font-weight:700;margin-top:2px;text-shadow:0 2px 4px rgba(0,0,0,.6)}
 #pz{position:fixed;right:14px;top:12px;display:none;z-index:5;padding:10px 18px;min-width:auto}
-#msg{position:fixed;left:0;right:0;top:25%;text-align:center;font-size:clamp(28px,7vw,56px);font-weight:900;text-shadow:0 3px 12px rgba(0,0,0,.6);pointer-events:none;opacity:0;transition:opacity .25s;z-index:60;z-index:5}
+#msg{position:fixed;left:0;right:0;top:25%;text-align:center;font-size:clamp(28px,7vw,56px);font-weight:900;text-shadow:0 3px 12px rgba(0,0,0,.6);pointer-events:none;opacity:0;transition:opacity .25s;z-index:5}
 #dbg{position:fixed;left:8px;bottom:8px;font:11px/1.35 monospace;background:rgba(0,0,0,.7);padding:6px 8px;border-radius:6px;white-space:pre;display:none;pointer-events:none;z-index:100;text-align:left}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .4s;z-index:20}
+#shop{touch-action:auto;overflow:hidden}
+#sg{touch-action:pan-y}
 
-.grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;margin:15px 0;width:90%;max-width:450px;max-height:58vh;max-height:calc(100vh - 250px);max-height:calc(100dvh - 250px);min-height:120px;overflow-y:auto;overflow-x:hidden;pointer-events:auto;touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:15px;margin:15px 0;width:90%;max-width:450px;max-height:58vh;overflow-y:auto;pointer-events:auto;touch-action:pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 .card{background:rgba(255,255,255,.1);border-radius:12px;padding:15px;text-align:center;border:2px solid transparent;transition:all 0.2s;backdrop-filter:blur(4px)}
 .card img{width:100%;aspect-ratio:1;border-radius:10px;display:block;margin-bottom:6px;cursor:pointer;background:#9fd4ff}
 .card .tp{cursor:pointer}
 .card.act{border-color:#ff8a1f;background:rgba(255,138,31,.2)}
 .card h3{margin:0 0 10px;text-transform:capitalize;font-size:22px;text-shadow:0 2px 4px #000}
-.lb-box{background:rgba(0,0,0,.6);border-radius:16px;padding:20px;width:90%;max-width:350px;margin-bottom:15px}
+.lb-box{background:rgba(0,0,0,.6);border-radius:16px;padding:20px;width:90%;max-width:350px;margin-bottom:15px;max-height:50vh;overflow-y:auto;pointer-events:auto}
 .lb-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1);font-size:18px;font-weight:700}
 .lb-row.me{color:#ffb04a;font-size:22px;text-shadow:0 2px 4px #000;border-bottom:none}
 </style>
@@ -50,12 +51,14 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 <button id="pz" class="s">II</button>
 <div id="msg"></div><div id="dbg"></div><div id="fade"></div>
 
-<div id="load" class="ov"><h1>Animal Jump</h1><p id="lt">Loading engine…</p></div>
+<div id="load" class="ov"><h1>Animal Jump</h1><p id="lt">Connecting to Cloud…</p></div>
 
 <div id="menu" class="ov h">
   <h1>Animal Jump</h1>
+  <p id="best-name" style="font-size:20px;color:#ffeb3b;margin-bottom:5px;"></p>
   <p id="best"></p>
   <button id="play">PLAY</button>
+  <button id="ldrb" style="background:linear-gradient(#f44336,#c62828);border-bottom-color:#b71c1c">LEADERBOARD</button>
   <button id="daily" style="background:linear-gradient(#8e6bff,#5b3fd6);border-bottom-color:#3b27a0">DAILY CHALLENGE</button>
   <p id="dly" style="font-size:15px"></p>
   <div id="qbox" style="background:rgba(0,0,0,.4);border-radius:12px;padding:8px 12px;text-align:left;max-width:90vw;display:grid;gap:3px"></div>
@@ -70,11 +73,24 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
   </div>
 </div>
 
+<div id="name-ui" class="ov h" style="background:rgba(10,30,60,.95);z-index:100">
+  <h1 id="name-title" style="font-size:36px">ENTER YOUR NAME</h1>
+  <p id="name-desc" style="font-size:16px;margin-bottom:20px">Join the global leaderboard!</p>
+  <input type="text" id="pname" maxlength="12" style="font-size:24px;padding:12px;border-radius:12px;border:none;text-align:center;width:220px;font-weight:bold;color:#000;pointer-events:auto">
+  <button id="pname-btn" style="margin-top:20px">SAVE & PLAY</button>
+</div>
+
+<div id="ldr-ui" class="ov h" style="background:rgba(10,20,40,.95);z-index:50">
+  <h1 id="ldr-title" style="font-size:42px;color:#ffb04a">GLOBAL TOP</h1>
+  <div class="lb-box" id="ldr-list">Loading...</div>
+  <button id="ldr-close" class="s">CLOSE</button>
+</div>
+
 <div id="shop" class="ov h" style="background:rgba(10,30,60,.95);justify-content:flex-start;padding-top:6%">
   <div id="shopcoins" style="position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));background:rgba(0,0,0,.45);border:2px solid #ffd54f;border-radius:20px;padding:6px 14px;font-weight:800;font-size:20px;color:#ffd54f;pointer-events:none;z-index:25">🪙 0</div>
   <h1 id="shop-title" style="font-size:40px">SHOP</h1>
   <div style="margin: 5px 0; display: flex; gap: 8px; justify-content: center; align-items: center; pointer-events: auto;">
-    <input type="text" id="seccode" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Secret Code" style="padding:8px; border-radius:8px; border:none; text-align:center; color:#000; font-weight:bold; width: 140px; font-size:16px;">
+    <input type="text" id="seccode" placeholder="Secret Code" style="padding:8px; border-radius:8px; border:none; text-align:center; color:#000; font-weight:bold; width: 140px; font-size:16px;">
     <button id="secbtn" class="s" style="margin:0; padding:8px 16px; background:#e91e63">UNLOCK</button>
   </div>
   <div class="grid" id="sg"></div>
@@ -99,7 +115,7 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
     <div style="position:absolute;top:15.0%;left:50.0%;transform:translate(-50%,-50%);font-size:36px;text-shadow:0 2px 4px rgba(0,0,0,.6)">🎈</div>
     <div style="position:absolute;top:39.2%;left:83.3%;transform:translate(-50%,-50%);font-size:36px;text-shadow:0 2px 4px rgba(0,0,0,.6)">💰</div>
     <div style="position:absolute;top:78.3%;left:70.6%;transform:translate(-50%,-50%);font-size:36px;text-shadow:0 2px 4px rgba(0,0,0,.6)">🪙</div>
-    <div style="position:absolute;top:78.3%;left:29.4%;transform:translate(-50%,-50%);font-size:36px;text-shadow:0 2px 4px rgba(0,0,0,.6)">❤️</div>
+    <div style="position:absolute;top:78.3%;left:29.4%;transform:translate(-50%,-50%);font-size:36px;text-shadow:0 2px 4px rgba(0,0,0,.6)">❤️️</div>
     <div style="position:absolute;top:39.2%;left:16.7%;transform:translate(-50%,-50%);font-size:28px;text-shadow:0 2px 4px rgba(0,0,0,.6)">🐾❓</div>
     <div id="spin-arrow" style="position:absolute;top:50%;left:50%;width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;border-bottom:45px solid #fff;transform-origin:50% 100%;margin-left:-15px;margin-top:-45px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.6))"></div>
     <div style="position:absolute;top:50%;left:50%;width:24px;height:24px;background:#fff;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 2px 6px rgba(0,0,0,.5)"></div>
@@ -111,14 +127,20 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 <div id="set" class="ov h" style="background:rgba(10,30,60,.85)"><h1 id="set-title" style="font-size:40px">SETTINGS</h1><button class="s" id="tv"></button><button class="s" id="ts"></button><button class="s" id="td"></button><button id="back" style="margin-top:15px">BACK</button></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
+
+<script type="module">
 "use strict";
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const LANG = {
  en: {
-  play:"PLAY", daily:"DAILY CHALLENGE", shop:"SHOP", set:"SETTINGS", hold:"Hold to charge · release to jump",
+  play:"PLAY", daily:"DAILY CHALLENGE", ldrb:"LEADERBOARD", shop:"SHOP", set:"SETTINGS", hold:"Hold to charge · release to jump",
   sec:"Secret Code", unl:"UNLOCK", close:"CLOSE", go:"GAME OVER", rep:"PLAY AGAIN", same:"SAME SEED · RACE GHOST",
   share:"SHARE RESULT", menu:"MENU", pau:"PAUSED", res:"RESUME", gift:"GIFT FOUND!", cont:"CONTINUE", back:"BACK",
+  ent_name:"ENTER YOUR NAME", name_desc:"Join the global leaderboard!", save_btn:"SAVE & PLAY", g_top:"GLOBAL TOP", no_rec:"No records yet",
   vib_on:"VIBRATION: ON", vib_off:"VIBRATION: OFF", snd_on:"SOUND: ON", snd_off:"SOUND: OFF", dbg_on:"DEBUG: ON", dbg_off:"DEBUG: OFF",
   best:"Best height: ", unlck:"Unlocked", sel:"SELECT", seled:"SELECTED", buy:"BUY", info:"INFO", upg:"UPGRADE L", maxl:"LEVEL 3 MAX",
   tr:"This run", ce:"Coins earned", gh:"Ghost (this level)", db:"Daily best", pb:"personal best", hud_p:"Platforms", hud_c:"Coins", hud_b:"Best",
@@ -131,17 +153,18 @@ const LANG = {
   ab_pig:"Lucky Coin", ab_pig_u1:"x3 coins earned", ab_pig_u2:"x4 coins earned", ab_pig_u3:"x5 coins earned",
   ab_capybara:"Calm", ab_capybara_u1:"Edge landings keep combo", ab_capybara_u2:"…and give +1 coin", ab_capybara_u3:"…and count as perfect",
   ab_panda:"Strong Legs", ab_panda_u1:"+10% jump power", ab_panda_u2:"+15% jump power", ab_panda_u3:"+20% jump power",
-  ab_dino:"Stomp", ab_dino_u1:"After 3 perfects (not necessarily in a row): grows into a giant, steps over 4 platforms", ab_dino_u2:"Steps over 5 platforms", ab_dino_u3:"2 perfects are enough, 6 platforms",
+  ab_dino:"Stomp", ab_dino_u1:"Lose life -> 3 perfects restore it", ab_dino_u2:"2 perfects restore it", ab_dino_u3:"2 perfects, bank up to 2 lives",
   ab_cat:"Claws", ab_cat_u1:"Grab edges up to 1.2m (1 charge/8 pl)", ab_cat_u2:"1.8m reach, charge/6 pl", ab_cat_u3:"2.5m reach, charge/4, 3 charges",
   ab_bear:"Tough", ab_bear_u1:"6 lives, +1 every 20 pl", ab_bear_u2:"6 lives, +1 every 15 pl", ab_bear_u3:"6 lives, +1 every 10 pl",
   goose:"Goose", ab_goose:"Wings", ab_goose_u1:"On a fall: fly 3 platforms ahead (cooldown 10 pl)", ab_goose_u2:"Fly 4 platforms, cooldown 9 pl", ab_goose_u3:"Fly 5 platforms, cooldown 8 pl", goose_msg:"FLY!",
-   q_title:"Daily quests", q_done:"QUEST COMPLETE", q_all:"ALL QUESTS DONE", q_perf:"Perfect landings: $", q_plat:"Cross $ platforms", q_combo:"Perfect combo x$", q_coins:"Earn $ coins", q_edge:"$ edge saves", q_long:"$ long jumps", q_height:"Reach $ m", q_gift:"Open $ gifts",
-   claws_msg:"CLAWS!", stomp_msg:"GIANT STOMP!", zen_msg:"ZEN!"
+  q_title:"Daily quests", q_done:"QUEST COMPLETE", q_all:"ALL QUESTS DONE", q_perf:"Perfect landings: $", q_plat:"Cross $ platforms", q_combo:"Perfect combo x$", q_coins:"Earn $ coins", q_edge:"$ edge saves", q_long:"$ long jumps", q_height:"Reach $ m", q_gift:"Open $ gifts",
+  claws_msg:"CLAWS!", stomp_msg:"STOMP! +❤️", zen_msg:"ZEN!"
  },
  ru: {
-  play:"ИГРАТЬ", daily:"ДНЕВНОЕ ЗАДАНИЕ", shop:"МАГАЗИН", set:"НАСТРОЙКИ", hold:"Удерживайте для прыжка",
+  play:"ИГРАТЬ", daily:"ДНЕВНОЕ ЗАДАНИЕ", ldrb:"РЕЙТИНГ", shop:"МАГАЗИН", set:"НАСТРОЙКИ", hold:"Удерживайте для прыжка",
   sec:"Секретный код", unl:"ОТКРЫТЬ", close:"ЗАКРЫТЬ", go:"ИГРА ОКОНЧЕНА", rep:"ИГРАТЬ СНОВА", same:"ТОТ ЖЕ УРОВЕНЬ · ПРИЗРАК",
   share:"ПОДЕЛИТЬСЯ", menu:"МЕНЮ", pau:"ПАУЗА", res:"ПРОДОЛЖИТЬ", gift:"ПОДАРОК!", cont:"ДАЛЕЕ", back:"НАЗАД",
+  ent_name:"ВВЕДИТЕ ИМЯ", name_desc:"Присоединяйтесь к мировому топу!", save_btn:"ИГРАТЬ", g_top:"РЕЙТИНГ ЛУЧШИХ", no_rec:"Пока нет рекордов",
   vib_on:"ВИБРАЦИЯ: ВКЛ", vib_off:"ВИБРАЦИЯ: ВЫКЛ", snd_on:"ЗВУК: ВКЛ", snd_off:"ЗВУК: ВЫКЛ", dbg_on:"ОТЛАДКА: ВКЛ", dbg_off:"ОТЛАДКА: ВЫКЛ",
   best:"Лучшая высота: ", unlck:"Открыто", sel:"ВЫБРАТЬ", seled:"ВЫБРАН", buy:"КУПИТЬ", info:"ИНФО", upg:"УЛУЧШИТЬ L", maxl:"МАКС. УРОВЕНЬ",
   tr:"Этот забег", ce:"Заработано монет", gh:"Призрак (уровень)", db:"Рекорд дня", pb:"личный рекорд", hud_p:"Платформы", hud_c:"Монеты", hud_b:"Лучший",
@@ -154,20 +177,135 @@ const LANG = {
   ab_pig:"Монетка", ab_pig_u1:"Монеты x3", ab_pig_u2:"Монеты x4", ab_pig_u3:"Монеты x5",
   ab_capybara:"Спокойствие", ab_capybara_u1:"Приземление на край не сбивает комбо", ab_capybara_u2:"…и даёт +1 монету", ab_capybara_u3:"…и считается идеальным",
   ab_panda:"Сильные лапы", ab_panda_u1:"+10% к силе прыжка", ab_panda_u2:"+15% к силе прыжка", ab_panda_u3:"+20% к силе прыжка",
-  ab_dino:"Топот", ab_dino_u1:"После 3 идеальных (необязательно подряд): вырастает и перешагивает 4 платформы", ab_dino_u2:"Перешагивает 5 платформ", ab_dino_u3:"Хватит 2 идеальных, 6 платформ",
+  ab_dino:"Топот", ab_dino_u1:"Потеряв жизнь, 3 идеальных её вернут", ab_dino_u2:"2 идеальных вернут", ab_dino_u3:"2 идеальных, запас до 2 жизней",
   ab_cat:"Когти", ab_cat_u1:"Хват за край до 1.2м (1/8 пл)", ab_cat_u2:"Радиус 1.8м, заряд/6 пл", ab_cat_u3:"Радиус 2.5м, заряд/4, 3 заряда",
   ab_bear:"Крепкий", ab_bear_u1:"6 жизней, +1 каждые 20 пл", ab_bear_u2:"6 жизней, +1 каждые 15 пл", ab_bear_u3:"6 жизней, +1 каждые 10 пл",
   goose:"Гусь", ab_goose:"Крылья", ab_goose_u1:"При падении взлетает на 3 платформы вперёд (откат 10 пл)", ab_goose_u2:"4 платформы, откат 9 пл", ab_goose_u3:"5 платформ, откат 8 пл", goose_msg:"ЛЕТИМ!",
-   q_title:"Задания дня", q_done:"ЗАДАНИЕ ВЫПОЛНЕНО", q_all:"ВСЕ ЗАДАНИЯ!", q_perf:"Идеальных посадок: $", q_plat:"Пройти платформ: $", q_combo:"Комбо идеальных x$", q_coins:"Заработать монет: $", q_edge:"Спасений на краю: $", q_long:"Длинных прыжков: $", q_height:"Достичь высоты $ м", q_gift:"Открыть подарков: $",
-   claws_msg:"КОГТИ!", stomp_msg:"ГИГАНТСКИЙ ТОПОТ!", zen_msg:"ДЗЕН!"
+  q_title:"Задания дня", q_done:"ЗАДАНИЕ ВЫПОЛНЕНО", q_all:"ВСЕ ЗАДАНИЯ!", q_perf:"Идеальных посадок: $", q_plat:"Пройти платформ: $", q_combo:"Комбо идеальных x$", q_coins:"Заработать монет: $", q_edge:"Спасений на краю: $", q_long:"Длинных прыжков: $", q_height:"Достичь высоты $ м", q_gift:"Открыть подарков: $",
+  claws_msg:"КОГТИ!", stomp_msg:"ТОПОТ! +❤️", zen_msg:"ДЗЕН!"
  }
 };
 
-const $ = id => document.getElementById(id), SV = 'animaljump.v3';
-let save = { v: 5, best: 0, coins: 0, vib: 1, snd: 1, dbg: 0, skins: ['fox'], skin: 'fox', ghosts: {}, top: [], daily: { d: 0, h: 0 }, sk: { d: 0, n: 0 }, up: {}, q: { d: 0, p: {}, done: [0, 0, 0] }, lang: navigator.language.startsWith('ru') ? 'ru' : 'en' };
-try { const s = JSON.parse(localStorage.getItem(SV) || '{}'); Object.assign(save, s); if (!save.skins) save.skins = ['fox']; if (!save.skin) save.skin = 'fox'; } catch (e) {}
-const persist = () => { try { localStorage.setItem(SV, JSON.stringify(save)) } catch (e) {} };
+const $ = id => document.getElementById(id);
+let save = { v: 6, best: 0, coins: 0, vib: 1, snd: 1, dbg: 0, skins: ['fox'], skin: 'fox', ghosts: {}, top: [], daily: { d: 0, h: 0 }, sk: { d: 0, n: 0 }, up: {}, q: { d: 0, p: {}, done: [0, 0, 0] }, lang: navigator.language.startsWith('ru') ? 'ru' : 'en', name: '' };
 const T = k => (LANG[save.lang] || LANG.en)[k] || k;
+
+// --- Firebase Integration ---
+const appId = 'animal-jump-game';
+const firebaseConfig = {
+    apiKey: "AIzaSyBTRVNA5Ui0Ki_IoXXLjiAQzRFF1GXowU8",
+    authDomain: "animal-jump-2de47.firebaseapp.com",
+    projectId: "animal-jump-2de47",
+    storageBucket: "animal-jump-2de47.firebasestorage.app",
+    messagingSenderId: "198843276412",
+    appId: "1:198843276412:web:135b6a1bae4ffc2451bdf9",
+    measurementId: "G-0287FHJENF"
+};
+let db = null, auth = null, userId = null, isCloudReady = false;
+
+async function initCloud() {
+    try {
+        const appInfo = initializeApp(firebaseConfig);
+        auth = getAuth(appInfo);
+        db = getFirestore(appInfo);
+        await signInAnonymously(auth);
+        userId = auth.currentUser.uid;
+        const snap = await getDoc(doc(db, 'artifacts', appId, 'users', userId));
+        if (snap.exists()) {
+            const cloudData = snap.data();
+            Object.assign(save, cloudData);
+        }
+        isCloudReady = true;
+    } catch(e) {
+        console.error("Cloud init failed", e);
+        const err = e && e.code ? `Cloud error: ${e.code}` : 'Cloud unavailable';
+        $('lt').textContent = err;
+    }
+    updateTexts();
+    boot();
+}
+
+let persistTimer = null;
+function persist() {
+    if (!db || !userId) return;
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(async () => {
+        try {
+            await setDoc(doc(db, 'artifacts', appId, 'users', userId), save);
+            if (save.name && save.best > 0) {
+                // Update global leaderboard
+                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'leaderboard', userId), {
+                    name: save.name,
+                    best: save.best,
+                    coins: save.coins,
+                    skin: save.skin
+                });
+            }
+        } catch(e) { console.error("Save error", e); }
+    }, 1500);
+}
+
+async function showLeaderboard() {
+    AU.click();
+    show('menu', 0);
+    show('ldr-ui', 1);
+    const ldrList = $('ldr-list');
+    ldrList.innerHTML = '<div style="text-align:center;padding:20px;">Loading...</div>';
+    
+    if (!db) {
+        ldrList.innerHTML = `<div style="text-align:center;padding:20px;">Cloud unavailable</div>`;
+        return;
+    }
+    
+    try {
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'leaderboard');
+        const snap = await getDocs(colRef);
+        let players = [];
+        snap.forEach(d => players.push(d.data()));
+        players.sort((a, b) => b.best - a.best);
+        players = players.slice(0, 15);
+        
+        ldrList.innerHTML = '';
+        if (players.length === 0) {
+            ldrList.innerHTML = `<div style="text-align:center;padding:20px;">${T('no_rec')}</div>`;
+            return;
+        }
+        
+        players.forEach((p, i) => {
+            const isMe = p.name === save.name;
+            const r = document.createElement('div');
+            r.className = 'lb-row' + (isMe ? ' me' : '');
+            const badge = p.skin && AB[p.skin] ? AB[p.skin].i : '';
+            r.innerHTML = `<span>${i + 1}. ${p.name} ${badge}</span><span>${p.best}m</span>`;
+            ldrList.appendChild(r);
+        });
+    } catch(e) {
+        ldrList.innerHTML = `<div style="text-align:center;padding:20px;">Failed to load.</div>`;
+    }
+}
+$('ldrb').onclick = showLeaderboard;
+$('ldr-close').onclick = () => { AU.click(); show('ldr-ui', 0); show('menu', 1); };
+
+function promptNameIfNeeded(callback) {
+    if (save.name && save.name.length > 0) {
+        callback();
+        return;
+    }
+    show('name-ui', 1);
+    $('pname-btn').onclick = () => {
+        const n = $('pname').value.trim();
+        if (n.length >= 2) {
+            AU.click();
+            save.name = n;
+            persist();
+            show('name-ui', 0);
+            updateTexts();
+            callback();
+        } else {
+            msg('Name too short!', 1000);
+        }
+    };
+}
 
 function updateTexts() {
   $('play').textContent = T('play'); $('daily').textContent = T('daily'); $('shopb').textContent = T('shop'); $('setb').textContent = T('set'); $('help-txt').textContent = T('hold');
@@ -175,9 +313,12 @@ function updateTexts() {
   $('shop-title').textContent = T('shop'); $('shopclose').textContent = T('close'); $('secbtn').textContent = T('unl'); $('seccode').placeholder = T('sec');
   $('go-title').textContent = T('go'); $('replay').textContent = T('rep'); $('again-same').textContent = T('same'); $('share').textContent = T('share'); $('gomenub').textContent = T('menu');
   $('pau-title').textContent = T('pau'); $('res').textContent = T('res'); $('menub').textContent = T('menu');
+  $('ldrb').textContent = T('ldrb'); $('name-title').textContent = T('ent_name'); $('name-desc').textContent = T('name_desc'); $('pname-btn').textContent = T('save_btn'); $('ldr-title').textContent = T('g_top');
+  
   renderQ(); $('gift-title').textContent = T('gift'); $('gift-ok').textContent = T('cont');
   $('lang-en').style.opacity = save.lang === 'en' ? '1' : '0.4'; $('lang-ru').style.opacity = save.lang === 'ru' ? '1' : '0.4';
   if ($('best').textContent) $('best').textContent = save.best ? T('best') + save.best + ' m   🪙 ' + save.coins : '';
+  if (save.name) $('best-name').textContent = `🎮 ${save.name}`;
 }
 $('lang-en').onclick = () => { save.lang = 'en'; persist(); updateTexts(); hud(); abHud(); if(app==='SHOP') renderShop(); };
 $('lang-ru').onclick = () => { save.lang = 'ru'; persist(); updateTexts(); hud(); abHud(); if(app==='SHOP') renderShop(); };
@@ -291,12 +432,12 @@ const AB = {
  fox: { i: '🎁' }, bunny: { i: '🥕' }, raccoon: { i: '🦝' }, pig: { i: '🪙' }, capybara: { i: '🌿' }, panda: { i: '☯️' }, dino: { i: '🦖' }, cat: { i: '🐾' }, bear: { i: '🛡️' }, goose: { i: '🪿' }
 };
 const upLv = k => (save.up && save.up[k]) || 1, lv = () => upLv(curSkin()), upCost = k => Math.round(Math.max(AN[k].p, 200) * (upLv(k) === 1 ? .5 : 1));
-let gsc = 1, giant = null, giantQ = false, _D = null, _V = null, stompN = 0, dinoC = 0, clawCh = 1, abM10 = 0, abM20 = 0, cFrac = 0;
+let stompN = 0, dinoC = 0, clawCh = 1, abM10 = 0, abM20 = 0, cFrac = 0;
 const curSkin = () => (run && run.tmp) || save.skin;
 const AB_on = id => !!run && !run.classic && curSkin() === id;
 function endTmp() { if (run && run.tmp) { run.tmp = null; const ry = fox.rotation.y; buildAnimal(save.skin); fox.rotation.y = ry; abHud(); } }
 const giftGap = i => AB_on('fox') ? [7, 6, 5][lv() - 1] + (i % 5) : 10 + (i % 6);
-function abHud() { const e = $('ab'); if (!run) return; if (run.classic) { e.textContent = 'Classic mode · no abilities'; return; } const k = curSkin(), a = AB[k]; if (!a) return; e.textContent = (run.tmp ? '🐾❓ ' : '') + a.i + ' ' + T('ab_'+k) + ' L' + lv() + (k === 'cat' ? ' ×' + clawCh : k === 'dino' ? ' · ' + dinoC + '/' + [3, 3, 2][lv() - 1] : k === 'goose' ? (maxIdx >= (run.gAt || 0) ? ' ✓' : ' ⏳' + ((run.gAt || 0) - maxIdx)) : ''); }
+function abHud() { const e = $('ab'); if (!run) return; if (run.classic) { e.textContent = 'Classic mode · no abilities'; return; } const k = curSkin(), a = AB[k]; if (!a) return; e.textContent = (run.tmp ? '🐾❓ ' : '') + a.i + ' ' + T('ab_'+k) + ' L' + lv() + (k === 'cat' ? ' ×' + clawCh : k === 'dino' && stompN ? ' · ' + dinoC + '/' + [3, 2, 2][lv() - 1] : k === 'goose' ? (maxIdx >= (run.gAt || 0) ? ' ✓' : ' ⏳' + ((run.gAt || 0) - maxIdx)) : ''); }
 function tryClaw(r, Tl) {
  const reach = [1.2, 1.8, 2.5][lv() - 1], g = PH.g, cy = Tl.y - [1.2, 1.6, 2][lv() - 1], ds = r.vy * r.vy - 2 * g * (cy - r.s.y); if (ds < 0) return;
  const t = (r.vy + Math.sqrt(ds)) / g, q = pathAt(r, t), d = Math.hypot(q.x - Tl.x, q.z - Tl.z);
@@ -304,55 +445,13 @@ function tryClaw(r, Tl) {
  clawCh--; abHud(); run.ok = false; Object.assign(r, { out: 'SUCCESS', zone: 'EDGE', landed: Tl, t, x: q.x, z: q.z, claw: 1, cy }); AU.blip(900, .15, 'square', .1, 400);
 }
 
-const smooth = x => x * x * (3 - 2 * x), eob = x => 1 + 2.70158 * (x - 1) ** 3 + 1.70158 * (x - 1) ** 2;
-function legsIK(yaw, foot) {
- const S = gsc, c = Math.cos(yaw), sn = Math.sin(yaw);
- fox.userData.legs.forEach((L, i) => { const F = foot(i, L), dx = F.x - pos.x, dz = F.z - pos.z; trexLegs(L, { x: (dx * c - dz * sn) / S, y: (F.y - pos.y) / S, z: (dx * sn + dz * c) / S }); });
-}
-function startGiant() {
- const n = [4, 5, 6][lv() - 1]; ensureTo(cur + n + G.gen.ahead); const pts = [], yaw = [], gp = [];
- for (let i = 0; i <= n; i++) pts.push(plats[cur + i]);
- for (let i = 0; i < n; i++) { gp.push(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)); yaw.push(Math.atan2(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)); }
- giant = { n, pts, yaw, S: cl(Math.max(...gp) * .9, 4.2, 8.5), ph: 'GROW', t: 0, k: 0, sq: null }; ph = 'STRIDE'; run.ok = false; fox.rotation.y = yaw[0];
- msg(T('stomp_msg'), 1600); AU.blip(70, .9, 'sawtooth', .3, 30); vib([40, 40, 90]);
-}
-function stepGiant(dt, now) {
- const g = giant, n = g.n, pts = g.pts, S = g.S, legs = fox.userData.legs; g.t += dt; let yaw = fox.rotation.y;
- const plant = (j, i) => { const L = legs[i], jj = cl(j, 0, n), y0 = g.yaw[Math.min(jj, n - 1)], c0 = Math.cos(y0), s0 = Math.sin(y0), P = pts[jj], lat = Math.sign(L.hx) * Math.min(Math.abs(L.hx) * S * .5, P.r * .4); return { x: P.x + lat * c0, y: P.y, z: P.z - lat * s0 }; };
- fox.userData.arms.forEach((a, i) => { a.rotation.x = Math.sin(now * .012 + i) * .5 - .3; });
- if (g.ph === 'GROW') {
-  const u = Math.min(1, g.t / 1.3), cr = u < .2 ? 1 - .16 * Math.sin(Math.PI * u / .2) : 1 + (S - 1) * eob((u - .2) / .8);
-  gsc = cr; body.scale.set(gsc, gsc * (1 + .04 * Math.sin(now * .04) * (u > .5 ? 1 : 0)), gsc); const rr = cl((u - .12) / .16) * (1 - cl((u - .84) / .16)), jw = fox.userData.jaw; head.rotation.x = (u < .2 ? .25 * Math.sin(Math.PI * u / .2) : 0) - .55 * rr; jw.rotation.x = rr * (.8 + .1 * Math.sin(now * .05)); if (u > .14 && !g.r) { g.r = 1; AU.blip(95, 1.1, 'sawtooth', .4, 40); if (AU.noise) AU.noise(.9, 260, .3); vib([30, 30, 60]); } tail.rotation.y = Math.sin(now * .01) * .3;
-  if (u > .2 && !g.b) { g.b = 1; cs.shake = .7; emit(pos.x, pos.y + .1, pos.z, 60, [.85, .8, .6], 6, 2.5); }
-  legsIK(yaw, (i) => plant(0, i)); if (u >= 1) { g.ph = 'WALK'; g.t = 0; g.u = 0; cs.shake = .5; emit(pos.x, pos.y + .1, pos.z, 40, [1, .9, .5], 7, 3); }
- } else if (g.ph === 'WALK') {
-  const k = g.k, P0 = pts[k], P1 = pts[k + 1], d = Math.hypot(P1.x - P0.x, P1.z - P0.z), D = Math.max(.85, d / (S * 2.4)); g.u += dt / D; const u = Math.min(1, g.u), e = smooth(u);
-  pos.x = P0.x + (P1.x - P0.x) * e; pos.z = P0.z + (P1.z - P0.z) * e; pos.y = P0.y + (P1.y - P0.y) * e + Math.sin(Math.PI * u) * .1 * S;
-  fox.rotation.y += ang(fox.rotation.y, g.yaw[k]) * (1 - Math.exp(-8 * dt)); yaw = fox.rotation.y;
-  body.rotation.z = 0; head.rotation.x = Math.sin(now * .006) * .05; tail.rotation.y = -Math.sin(Math.PI * (k + u)) * .35; body.scale.set(S, S, S);
-  legsIK(yaw, (i) => { if (i === k % 2) return plant(k, i); const a = plant(k === 0 ? 0 : k - 1, i), b = plant(k + 1, i), es = smooth(cl((u - .08) / .84)); return { x: a.x + (b.x - a.x) * es, z: a.z + (b.z - a.z) * es, y: a.y + (b.y - a.y) * es + Math.sin(Math.PI * es) * .3 * S }; });
-  if (u >= 1) {
-   const L = pts[k + 1]; cur = L.idx; if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (mOf(L.idx) > save.best) save.best = mOf(L.idx); } save.coins += 2; run.coins += 2; qAdd('coins', 2); qMax('height', mOf(L.idx)); persist(); ensure(); hud();
-   cs.shake = .4; AU.blip(80, .3, 'sine', .35, 35); vib(25); emit(L.x, L.y + .1, L.z, 40, [.85, .8, .6], 6, 2.2); g.sq = { i: L.idx, t: 0 }; g.k++; g.u = 0; if (g.k >= n) { g.ph = 'SHRINK'; g.t = 0; emit(pos.x, pos.y + 1, pos.z, 50, [.6, 1, .6], 5, 4); AU.blip(300, .5, 'triangle', .2, 900); }
-  }
- } else {
-  const u = Math.min(1, g.t / .9); gsc = 1 + (S - 1) * (1 - smooth(u)); body.scale.set(gsc, gsc, gsc); body.rotation.z *= .9; head.rotation.x *= .9; fox.userData.jaw.rotation.x *= .8;
-  legsIK(yaw, (i) => plant(n, i));
-  if (u >= 1) { gsc = 1; body.scale.set(1, 1, 1); body.rotation.set(0, 0, 0); head.rotation.x = 0; fox.userData.jaw.rotation.x = 0; const L = plats[cur]; pos.x = L.x; pos.y = L.y; pos.z = L.z; giant = null; ph = 'LANDING'; lt = 0; landZ = 'NORMAL'; res = { landed: L, out: 'SUCCESS', zone: 'NORMAL' }; AU.land('NORMAL'); abHud(); return; }
- }
- if (g.sq) { const m = pm.get(g.sq.i); if (m) { g.sq.t += dt; const q = Math.exp(-g.sq.t * 7) * Math.cos(g.sq.t * 22); m.scale.set(1 + .05 * q, 1 - .1 * q, 1 + .05 * q); if (g.sq.t > .6) { m.scale.set(1, 1, 1); g.sq = null; } } }
-}
 function startGoose() {
  const n = [3, 4, 5][lv() - 1], tIdx = cur + n; ensureTo(tIdx + G.gen.ahead);
  gStart = { x: pos.x, y: pos.y, z: pos.z }; cur = tIdx; gEnd = plats[tIdx]; maxIdx = Math.max(maxIdx, cur); sync(0);
  gT = 0; gDur = Math.max(1.8, Math.hypot(gEnd.x - pos.x, gEnd.z - pos.z) / 8); ph = 'GLIDE'; run.ok = false; run.gAt = maxIdx + [10, 9, 8][lv() - 1];
  msg(T('goose_msg'), 1200); AU.blip(500, .3, 'triangle', .12, 900); cs.shake = .1; vib(30); abHud();
 }
-/* Meters = distance travelled along the path: it grows with every platform (the old altitude counter dropped on downhill platforms) */
-function mOf(i) { const p = plats[i]; if (!p) return 0; if (p.m === undefined) p.m = i === 0 ? 0 : mOf(i - 1) + Math.round(Math.hypot(p.x - plats[i - 1].x, p.z - plats[i - 1].z)); return p.m; }
-if (save.mv !== 2) { save.mv = 2; save.ghosts = {}; save.top = []; save.daily = { d: 0, h: 0 }; save.q.p.height = 0; persist(); }
-// One-time correction after switching the distance metric: rebuild best from the current top if available.
-if (save.bestMetric !== 2) { save.best = Array.isArray(save.top) && save.top.length ? Math.max(...save.top) : 0; save.bestMetric = 2; persist(); }
+
 let run = null, runT = 0, nextSeed = 0, urlSeed = +new URLSearchParams(location.search).get('seed') || 0, gh = null, gs = null, gk = 0, gcur = 0, gMesh = null, ghLabel = '';
 const todaySeed = () => { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); };
 const dayIdx = () => { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5); };
@@ -371,7 +470,7 @@ function ghostUpd() {
   if (el < end) { const q = pathAt(gs.r, Math.max(0, el)); gMesh.position.set(q.x, q.y, q.z); gMesh.visible = q.y > plats[gcur].y - 8; return; }
   if (gs.r.out === 'SUCCESS' && gs.r.landed.idx > gcur) gcur = gs.r.landed.idx; gs = null;
  }
- const P = plats[gcur]; gMesh.visible = true; gMesh.position.set(P.x, P.y, P.z); const t = mOf(gcur) + 'm'; if (t !== ghLabel) { ghLabel = t; $('gh').textContent = '  ·  👻 ' + t; }
+ const P = plats[gcur]; gMesh.visible = true; gMesh.position.set(P.x, P.y, P.z); const t = Math.round(P.y * 10) + 'm'; if (t !== ghLabel) { ghLabel = t; $('gh').textContent = '  ·  👻 ' + t; }
 }
 function saveRun(h) {
  if (!run || run.saved) return; run.saved = true; if (!(h > 0)) return;
@@ -406,7 +505,6 @@ let R, scene, camera, sun, fox, body, head, tail, partP, V3, pm = new Map(), far
 const M = (c, r = .75) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0 });
 const sph = (r, m, x, y, z, sx = 1, sy = 1, sz = 1) => { const o = new THREE.Mesh(new THREE.SphereGeometry(r, 20, 14), m); o.position.set(x, y, z); o.scale.set(sx, sy, sz); o.castShadow = true; return o; };
 
-/* ===== Procedural textures: fur / fluff / coarse / speckle / tabby / skin / scales / feathers ===== */
 const shade = (c, f) => `rgb(${Math.min(255, (c >> 16 & 255) * f | 0)},${Math.min(255, (c >> 8 & 255) * f | 0)},${Math.min(255, (c & 255) * f | 0)})`;
 const hair = (n, l0, l1, w, al, sp) => (g, r, c) => { g.fillStyle = shade(c, 1); g.fillRect(0, 0, 128, 128); g.lineWidth = w; g.globalAlpha = al; for (let i = 0; i < n; i++) { const x = r.next() * 128, y = r.next() * 128, l = l0 + r.next() * l1, an = 1.57 + (r.next() - .5) * sp; g.strokeStyle = shade(c, .72 + r.next() * .6); g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(an) * l, y + Math.sin(an) * l); g.stroke(); } g.globalAlpha = 1; };
 const TKD = {
@@ -423,6 +521,7 @@ function TM(c, kind, rough = .85) {
  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(kind === 'scales' || kind === 'feathers' ? 3 : 2, 2); t.encoding = THREE.sRGBEncoding;
  return TXM[key] = new THREE.MeshStandardMaterial({ map: t, bumpMap: t, bumpScale: kind === 'scales' ? 2.5 : 1.6, roughness: kind === 'skin' ? .55 : rough, metalness: 0 });
 }
+
 let wL = null, wR = null, tipL = null, tipR = null, wf = 1.35, gStart = null, gEnd = null, gT = 0, gDur = 2;
 const VCM = m => m.userData.vc || (m.userData.vc = Object.assign(m.clone(), { vertexColors: true }));
 function shadeModel(root) {
@@ -434,6 +533,7 @@ function shadeModel(root) {
   g.setAttribute('color', new THREE.BufferAttribute(c, 3)); o.material = VCM(o.material);
  });
 }
+let gsc = 1;
 /* ===== T. rex: bipedal, big skull, long counter-balancing tail, tiny two-fingered arms, long hind legs (2-bone IK, knee forward) ===== */
 function trexLegs(L, F) {
  const A = .55, B = .55, hy = .92; _D = _D || new THREE.Vector3(0, -1, 0); _V = _V || new THREE.Vector3();
@@ -493,7 +593,7 @@ function buildGoose() {
  body.add(head, tail); scene.add(fox); if (typeof pos !== 'undefined' && pos) fox.position.set(pos.x, pos.y, pos.z);
 }
 function buildAnimal(type) {
- wL = wR = tipL = tipR = null; if (type === 'goose') return buildGoose(); if (type === 'dino') return buildTRex();
+ wL = wR = tipL = tipR = null; if (type === 'dino') return buildTRex(); if (type === 'goose') return buildGoose();
  if (fox) scene.remove(fox); const A = AN[type] || AN.fox; fox = new THREE.Group(); body = new THREE.Group(); fox.add(body);
  const KD = KIND[type], F = (c, k = KD) => TM(c, k), fur = F(A.c1), c2 = F(A.c2, KD === 'tabby' ? 'fur' : KD), dk = M(0x2a1b18, .35), wh = F(0xffffff, KD === 'tabby' ? 'fur' : KD), pk = F(0xff9fb5), bk = F(0x1c1c22), pg2 = F(0xff8fb0), gr = M(0x7be07b, .3), ey = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: .06, metalness: .15 }), hl = new THREE.MeshBasicMaterial({ color: 0xffffff }), ew = M(0xffffff, .2);
  const fx = type === 'fox', cat = type === 'cat', pig = type === 'pig', bun = type === 'bunny', bear = type === 'bear', panda = type === 'panda', rac = type === 'raccoon', cap = type === 'capybara', dn = type === 'dino';
@@ -519,24 +619,21 @@ function buildAnimal(type) {
   else if (bun) { e = sph(.12, fur, s * .2, .8, -.02, .8, 3.2, .6); e.rotation.z = -s * .12; const ii = sph(.07, pk, s * .2, .8, .06, .6, 2.8, .4); ii.rotation.z = -s * .12; head.add(ii); }
   else if (pig) { e = new THREE.Mesh(new THREE.ConeGeometry(.2, .3, 3), pg2); e.position.set(s * .36, .36, .06); e.rotation.set(.4, 0, -s * 1.1); }
   else if (cap) { e = sph(.1, fur, s * .4, .32, -.08, 1, 1.2, .8); } else if (dn) { e = new THREE.Mesh(new THREE.ConeGeometry(.06, .18, 4), F(0xffb347)); e.position.set(s * .2, .5, .1); } else { e = sph(.18, panda ? bk : fur, s * .36, .42, 0); if (bear) head.add(sph(.09, c2, s * .36, .42, .1)); }
-  e.castShadow = true; head.add(e); { const l1 = sph(.15, limb, s * .3, .13, .35), l2 = sph(.15, limb, s * .28, .13, -.3); body.add(l1, l2); if (dn) fox.userData.norm = (fox.userData.norm || []).concat(l1, l2); } if (panda) body.add(sph(.17, bk, s * .45, .8, .1, .7, 1.1, .8));
+  e.castShadow = true; head.add(e); body.add(sph(.15, limb, s * .3, .13, .35), sph(.15, limb, s * .28, .13, -.3)); if (panda) body.add(sph(.17, bk, s * .45, .8, .1, .7, 1.1, .8));
  }
  body.add(head); tail = new THREE.Group(); tail.position.set(0, .55, -.55);
- if (fx) tail.add(sph(.28, fur, 0, .1, -.2, .8, .8, 1.5), sph(.17, c2, 0, .15, -.62)); else if (cat) for (let i = 0; i < 6; i++) tail.add(sph(.085 - i * .004, i === 5 ? wh : fur, 0, .1 + i * .14, -.12 - Math.sin(i * .45) * .22)); else if (bun) tail.add(sph(.2, wh, 0, .1, -.15)); else if (pig) { const t = new THREE.Mesh(new THREE.TorusGeometry(.09, .03, 8, 14, 4.7), F(0xe88aa0)); t.position.set(0, .15, -.12); t.rotation.y = Math.PI / 2; tail.add(t); } else if (panda) tail.add(sph(.14, wh, 0, .05, -.1)); else if (rac) { for (let i = 0; i < 5; i++) tail.add(sph(.2 - i * .01, i % 2 ? bk : wh, 0, .1, -.1 - i * .17, .9, .9, 1.1)); } else if (cap) tail.add(sph(.06, fur, 0, .05, -.05)); else if (dn) {
-  const sl = [], gm = F(0x3f9a4c), ft = F(0x2f7a3a); [[-1, 1], [-1, -1], [1, 1], [1, -1]].forEach(([sx, sz]) => { const pv = new THREE.Group(), cy = new THREE.Mesh(new THREE.CylinderGeometry(.13, .1, 1, 8), gm), fo = sph(.17, ft, 0, 0, .06, 1, .55, 1.5); cy.castShadow = true; pv.add(cy, fo); pv.visible = false; pv.userData = { hx: sx * .3, hz: sz * .33, cy, fo }; body.add(pv); sl.push(pv); }); fox.userData.sl = sl;
-  for (let i = 0; i < 6; i++) tail.add(sph(.2 - i * .03, fur, 0, .08 - i * .01, -.1 - i * .2)); const pl = F(0xffb347); [-.25, 0, .22].forEach(z => { const c = new THREE.Mesh(new THREE.ConeGeometry(.12, .22, 4), pl); c.position.set(0, 1.2, z); body.add(c); }); [-.18, .02, .22].forEach(z => { const c = new THREE.Mesh(new THREE.ConeGeometry(.07, .2, 4), pl); c.position.set(0, .52, z); head.add(c); }); } else tail.add(sph(.12, fur, 0, .05, -.1));
+ if (fx) tail.add(sph(.28, fur, 0, .1, -.2, .8, .8, 1.5), sph(.17, c2, 0, .15, -.62)); else if (cat) for (let i = 0; i < 6; i++) tail.add(sph(.085 - i * .004, i === 5 ? wh : fur, 0, .1 + i * .14, -.12 - Math.sin(i * .45) * .22)); else if (bun) tail.add(sph(.2, wh, 0, .1, -.15)); else if (pig) { const t = new THREE.Mesh(new THREE.TorusGeometry(.09, .03, 8, 14, 4.7), F(0xe88aa0)); t.position.set(0, .15, -.12); t.rotation.y = Math.PI / 2; tail.add(t); } else if (panda) tail.add(sph(.14, wh, 0, .05, -.1)); else if (rac) { for (let i = 0; i < 5; i++) tail.add(sph(.2 - i * .01, i % 2 ? bk : wh, 0, .1, -.1 - i * .17, .9, .9, 1.1)); } else if (cap) tail.add(sph(.06, fur, 0, .05, -.05)); else if (dn) { for (let i = 0; i < 6; i++) tail.add(sph(.2 - i * .03, fur, 0, .08 - i * .01, -.1 - i * .2)); const pl = F(0xffb347); [-.25, 0, .22].forEach(z => { const c = new THREE.Mesh(new THREE.ConeGeometry(.12, .22, 4), pl); c.position.set(0, 1.2, z); body.add(c); }); [-.18, .02, .22].forEach(z => { const c = new THREE.Mesh(new THREE.ConeGeometry(.07, .2, 4), pl); c.position.set(0, .52, z); head.add(c); }); } else tail.add(sph(.12, fur, 0, .05, -.1));
  body.add(tail); shadeModel(fox); scene.add(fox); if (typeof pos !== 'undefined' && pos) fox.position.set(pos.x, pos.y, pos.z);
 }
 
-/* ===== Daily quests (same 3 for everyone each day, seeded by date) ===== */
-const QM = { perf: [8, 12, 20], plat: [25, 40, 60], combo: [3, 4, 5], coins: [60, 100, 150], edge: [2, 3, 5], long: [2, 3, 4], height: [150, 250, 400], gift: [1, 2, 2] }, QR = [40, 70, 110];
+const QM = { perf: [8, 12, 20], plat: [25, 40, 60], combo: [3, 4, 5], coins: [60, 100, 150], edge: [2, 3, 5], long: [2, 3, 4], height: [60, 100, 150], gift: [1, 2, 2] }, QR = [40, 70, 110];
 function quests() { const r = new RNG(hash(todaySeed(), 77)), ks = Object.keys(QM), out = []; for (let i = 0; i < 3; i++) { const k = ks.splice(Math.floor(r.next() * ks.length), 1)[0], tier = Math.floor(r.next() * 3); out.push({ m: k, t: QM[k][tier], r: QR[tier] }); } return out; }
 function qInit() { if (save.q.d !== todaySeed()) save.q = { d: todaySeed(), p: {}, done: [0, 0, 0] }; }
 function renderQ() { const e = $('qbox'); if (!e) return; qInit(); e.innerHTML = '<b style="font-size:14px">📋 ' + T('q_title') + '</b>' + quests().map((q, i) => { const v = Math.min(q.t, save.q.p[q.m] || 0), d = save.q.done[i]; return `<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;opacity:${d ? .55 : 1}"><span>${d ? '✅' : '▫️'} ${T('q_' + q.m).replace('$', q.t)}</span><span>${v}/${q.t} · 🪙${q.r}</span></div>`; }).join(''); }
 function qCheck() { quests().forEach((q, i) => { if (!save.q.done[i] && (save.q.p[q.m] || 0) >= q.t) { save.q.done[i] = 1; save.coins += q.r; if (run) run.coins += q.r; setTimeout(() => msg('📋 ' + T('q_done') + ' +' + q.r + '🪙', 1500), 900); if (save.q.done.every(Boolean)) { save.coins += 60; setTimeout(() => msg('🏆 ' + T('q_all') + ' +60🪙', 1800), 2700); } } }); persist(); renderQ(); if (plats.length) hud(); }
 const qAdd = (m, n = 1) => { qInit(); save.q.p[m] = (save.q.p[m] || 0) + n; qCheck(); };
 const qMax = (m, v) => { qInit(); if (v > (save.q.p[m] || 0)) { save.q.p[m] = v; qCheck(); } };
-/* ===== Shop previews: each animal rendered once into an image ===== */
+
 const THUMB = {};
 function makeThumbs() {
  const N = 256, rt = new THREE.WebGLRenderTarget(N, N); rt.texture.encoding = THREE.sRGBEncoding;
@@ -545,13 +642,14 @@ function makeThumbs() {
  const buf = new Uint8Array(N * N * 4), cv = document.createElement('canvas'); cv.width = cv.height = N; const cx = cv.getContext('2d'), im = cx.createImageData(N, N), row = N * 4;
  const keep = curSkin(), ry = fox.rotation.y, px = fox.position.clone();
  for (const k of Object.keys(AN)) {
-  buildAnimal(k); fox.position.set(0, 0, 0); fox.rotation.y = -.35; ts.add(fox); { const f = k === 'dino' ? 1.45 : 1; cam.position.set(2.6 * f, 1.3 + .6 * f, 5.2 * f); cam.lookAt(0, k === 'dino' ? 1 : 1.05, 0); }
+  buildAnimal(k); fox.position.set(0, 0, 0); fox.rotation.y = -.35; ts.add(fox);
   R.setRenderTarget(rt); R.render(ts, cam); R.readRenderTargetPixels(rt, 0, 0, N, N, buf); R.setRenderTarget(null);
   for (let y = 0; y < N; y++) im.data.set(buf.subarray((N - 1 - y) * row, (N - y) * row), y * row);
   cx.putImageData(im, 0, 0); THUMB[k] = cv.toDataURL('image/png'); ts.remove(fox);
  }
  buildAnimal(keep); fox.rotation.y = ry; fox.position.copy(px); rt.dispose();
 }
+
 function build() {
  V3 = THREE.Vector3;
  R = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' }); R.outputEncoding = THREE.sRGBEncoding; R.toneMapping = THREE.ACESFilmicToneMapping; R.toneMappingExposure = 1.1; R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -614,7 +712,7 @@ function respawn() { endTmp();
 
 let lh = '';
 function hud() { 
-  abHud(); const h = Math.max(0, mOf(maxIdx)), t = h + ''; if (t !== lh) { $('ht').textContent = t + 'm'; lh = t; } 
+  abHud(); const h = Math.max(0, Math.round(plats[maxIdx].y * 10)), t = h + ''; if (t !== lh) { $('ht').textContent = t + 'm'; lh = t; } 
   $('hs').textContent = `${T('hud_b')} ${save.best}m  ·  ${T('hud_p')} ${maxIdx}  ·  🪙 ${save.coins}` + (combo > 1 ? `  ·  ${T('m_perf')} x${combo}` : '') + (doubleCoins > 0 ? ` (🪙x2: ${doubleCoins})` : ''); 
 }
 const hint = t => { if (jumps < 3 && ph !== 'AIR') msg(t, 500); };
@@ -629,32 +727,32 @@ function release() {
 function onLand() {
  const L = res.landed; ph = 'LANDING'; lt = 0; landZ = res.zone; pos.x = res.x; pos.y = res.claw ? res.cy : L.y; pos.z = res.z; const success = res.out === 'SUCCESS';
  if (success) {
-  const skipped = L.idx > cur + 1; if (L.idx > cur) cur = L.idx; ensure(); if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (mOf(L.idx) > save.best) save.best = mOf(L.idx); }
+  const skipped = L.idx > cur + 1; if (L.idx > cur) cur = L.idx; ensure(); if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (Math.round(L.y * 10) > save.best) save.best = Math.round(L.y * 10); }
   let earned = 1;
   if (res.zone === 'PERFECT') {
-   combo++; perfects++; qAdd('perf'); dinoC++; if (AB_on('dino') && dinoC >= [3, 3, 2][lv() - 1]) { dinoC = 0; giantQ = true; } earned = 1 + Math.min(combo, 5);
+   combo++; perfects++; qAdd('perf'); dinoC++; if (AB_on('dino') && stompN > 0 && dinoC >= [3, 2, 2][lv() - 1]) { stompN--; dinoC = 0; lives++; updHearts(); setTimeout(() => msg(T('stomp_msg'), 1000), 500); AU.blip(90, .3, 'sawtooth', .25, 40); cs.shake = .5; } earned = 1 + Math.min(combo, 5);
    if (combo > 1) msg(T('m_perf') + ' x' + combo); else msg(T('m_perf') + '!'); 
   } else {
    if (AB_on('capybara') && res.zone === 'EDGE') { if (lv() >= 3) combo++; } else combo = 0;
-   if (res.claw) msg(T('claws_msg'), 900); else if (res.zone === 'EDGE') msg(T('m_sav'), 700); else if (skipped) msg(T('m_lj'), 700);
+   dinoC = 0; if (res.claw) msg(T('claws_msg'), 900); else if (res.zone === 'EDGE') msg(T('m_sav'), 700); else if (skipped) msg(T('m_lj'), 700);
   }
   if (AB_on('pig')) earned *= [3, 4, 5][lv() - 1]; if (doubleCoins > 0) { earned *= 2; doubleCoins--; } if (AB_on('bunny')) { cFrac += earned * [.25, .35, .5][lv() - 1] + (res.zone === 'EDGE' ? (lv() === 3 ? 2 : 1) : 0); const bn = Math.floor(cFrac); cFrac -= bn; earned += bn; } if (AB_on('capybara') && res.zone === 'EDGE' && lv() >= 2) earned += 1; save.coins += earned; run.coins += earned; qAdd('coins', earned);
   if (maxIdx >= lastCp + G.gen.cp) { lastCp = maxIdx; AU.cp(); msg(T('m_cp'), 1200); }
   { const m10 = Math.floor(maxIdx / [8, 6, 4][lv() - 1]), m20 = Math.floor(maxIdx / [20, 15, 10][lv() - 1]), mc = lv() === 3 ? 3 : 2; if (m10 > abM10) { abM10 = m10; if (clawCh < mc) clawCh++; abHud(); } if (m20 > abM20) { abM20 = m20; if (AB_on('bear') && lives < 6) { lives++; updHearts(); msg('+❤️', 900); } } }
-  qMax('height', mOf(L.idx)); qMax('combo', combo); if (res.zone === 'EDGE') qAdd('edge'); if (skipped) qAdd('long'); persist(); AU.land(res.zone); vib(res.zone === 'PERFECT' ? [20, 30, 20] : 25); cs.shake = res.zone === 'PERFECT' ? .35 : .22; emit(pos.x, pos.y + .1, pos.z, res.zone === 'PERFECT' ? 50 : 24, res.zone === 'PERFECT' ? [1, .9, .4] : [.8, .75, .6], res.zone === 'PERFECT' ? 4 : 2.4, 2);
+  qMax('height', Math.round(L.y * 10)); qMax('combo', combo); if (res.zone === 'EDGE') qAdd('edge'); if (skipped) qAdd('long'); persist(); AU.land(res.zone); vib(res.zone === 'PERFECT' ? [20, 30, 20] : 25); cs.shake = res.zone === 'PERFECT' ? .35 : .22; emit(pos.x, pos.y + .1, pos.z, res.zone === 'PERFECT' ? 50 : 24, res.zone === 'PERFECT' ? [1, .9, .4] : [.8, .75, .6], res.zone === 'PERFECT' ? 4 : 2.4, 2);
  } else {
   combo = 0; msg(L.idx === cur ? T('m_try') : T('m_miss'), 700); AU.blip(180, .22, 'sawtooth', .12, 70); vib(25); cs.shake = .18; emit(pos.x, pos.y + .1, pos.z, 20, [.85, .7, .55], 2.2, 1.6);
  }
  hud(); dbgLines();
 }
 
-function die() { ph = 'DEAD'; dtm = 0; AU.fall(); vib(60); $('fade').style.opacity = 1; lives--; if (save.skin !== 'dino') giantQ = false; updHearts(); }
+function die() { ph = 'DEAD'; dtm = 0; AU.fall(); vib(60); $('fade').style.opacity = 1; lives--; if (AB_on('dino')) stompN = Math.min(lv() === 3 ? 2 : 1, stompN + 1); updHearts(); }
 
 function gameOver() {
  app = 'GAMEOVER'; ph = 'IDLE'; paused = false; cancelCharge(); respawn(); 
  $('hud').style.display = 'none'; $('pz').style.display = 'none'; show('pause', 0);
- $('godist').textContent = mOf(maxIdx) + ' m';
- const h = mOf(maxIdx), prev = save.ghosts[seed], l = $('golist'); l.innerHTML = '';
+ $('godist').textContent = Math.round(plats[maxIdx].y * 10) + ' m';
+ const h = Math.round(plats[maxIdx].y * 10), prev = save.ghosts[seed], l = $('golist'); l.innerHTML = '';
  const row = (a, b, me) => { const r = document.createElement('div'); r.className = 'lb-row' + (me ? ' me' : ''); r.innerHTML = `<span>${a}</span><span>${b}</span>`; l.appendChild(r); };
  saveRun(h); 
  row(T('tr'), h + 'm', 1); row('🪙 ' + T('ce'), '+' + run.coins); if (prev) row('👻 ' + T('gh'), prev.h + 'm'); if (seed === todaySeed()) row('📅 ' + T('db'), save.daily.h + 'm');
@@ -665,13 +763,13 @@ function gameOver() {
 function inp(e) { if (app === 'PLAY') e(); }
 const down = () => inp(() => { if (paused || ph === 'DEAD') return; AU.init(); held = true; if (ph === 'IDLE') startCharge(); else if (ph === 'LANDING') want = true; });
 const up = () => { held = false; want = false; if (app === 'PLAY' && !paused && ph === 'CHARGING') release(); };
-addEventListener('pointerdown', e => { if (!e.target.closest('button') && !e.target.closest('span')) down(); }); addEventListener('pointerup', up);
+addEventListener('pointerdown', e => { if (!e.target.closest('button') && !e.target.closest('span') && !e.target.closest('input')) down(); }); addEventListener('pointerup', up);
 addEventListener('pointercancel', () => { held = false; want = false; cancelCharge(); });
 addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) down(); } else if (e.code === 'F3') { e.preventDefault(); toggleDbg(); } else if ((e.code === 'Escape' || e.code === 'KeyP') && app === 'PLAY' && ph !== 'DEAD') setPause(!paused); });
 addEventListener('keyup', e => { if (e.code === 'Space') up(); });
 addEventListener('blur', () => { held = false; want = false; cancelCharge(); if (app === 'PLAY' && ph !== 'DEAD' && !document.hidden) setPause(true); });
 document.addEventListener('visibilitychange', () => { if (document.hidden) { held = false; want = false; cancelCharge(); if (app === 'PLAY' && ph !== 'DEAD') setPause(true); } });
-addEventListener('touchmove', e => { if (e.target.tagName === 'INPUT') return; for (let n = e.target; n && n !== document.body; n = n.parentElement) { if ((n.classList.contains('grid') || n.classList.contains('ov')) && n.scrollHeight > n.clientHeight + 1) return; } e.preventDefault(); }, { passive: false }); addEventListener('contextmenu', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+addEventListener('touchmove', e => { if (e.target.tagName !== 'INPUT' && !e.target.closest('#sg')) e.preventDefault(); }, { passive: false }); addEventListener('contextmenu', e => { if (e.target.tagName !== 'INPUT') e.preventDefault(); });
 
 let gpd = false; let gamepadBlocked = false;
 function gpoll() { try { if (typeof navigator.getGamepads !== 'function') return; const pads = navigator.getGamepads(); const g = pads && pads[0]; if (!g) return; const b = !!(g.buttons && g.buttons[0] && g.buttons[0].pressed); if (b && !gpd) down(); if (!b && gpd) up(); gpd = b; } catch (e) { if (!gamepadBlocked) { gamepadBlocked = true; console.info('Gamepad API unavailable'); } } }
@@ -680,7 +778,7 @@ function setPause(p) { if (app !== 'PLAY' || paused === p || ph === 'DEAD') retu
 function show(id, on) { $(id).classList.toggle('h', !on); }
 
 function toMenu() { renderQ();
- if (run && !run.saved && maxIdx > 0) saveRun(mOf(maxIdx));
+ if (run && !run.saved && maxIdx > 0) saveRun(Math.round(plats[maxIdx].y * 10));
  $('dly').textContent = (save.daily.d === todaySeed() ? '📅 Today: ' + save.daily.h + ' m' : '📅 New level today') + (save.sk.n && save.sk.d >= dayIdx() - 1 ? '  🔥 ' + save.sk.n + '-day streak' : '');
  app = 'MENU'; paused = false; cancelCharge(); $('hud').style.display = 'none'; $('pz').style.display = 'none'; show('pause', 0); show('set', 0); show('go', 0); show('shop', 0); show('gift-ui', 0); show('menu', 1);
  updateTexts(); if (!plats.length || lives <= 0) newRun();
@@ -695,7 +793,7 @@ function renderShop() {
  Object.keys(AN).sort((a, b) => AN[a].p - AN[b].p).forEach(k => {
   const a = AN[k], unl = save.skins.includes(k), sel = save.skin === k; const c = document.createElement('div'); c.className = 'card' + (sel ? ' act' : '');
   const th = THUMB[k], L = upLv(k);
-   c.innerHTML = `<div class="tp">${th ? `<img src="${th}" style="${unl ? '' : 'filter:brightness(.5) saturate(.3)'}">` : `<div style="font-size:64px">${AB[k].i}</div>`}<h3>${AB[k].i} ${T(k)}${unl ? '' : ' 🔒'}</h3><p style="font-size:12px;opacity:.85;margin:0 0 4px"><b>${T('ab_' + k)}</b> L${L} ▾</p></div><div class="dsc" style="display:none;font-size:12px;margin-bottom:6px;text-align:left;background:rgba(0,0,0,.3);border-radius:8px;padding:6px">${T('ab_' + k + '_u' + L)}${L < 3 ? `<br><i style="opacity:.7">${T('next')}${T('ab_' + k + '_u' + (L + 1))}</i>` : ''}</div><p style="font-weight:700;color:${unl ? 'inherit' : save.coins >= a.p ? '#9ccc65' : '#ff8a80'}">${unl ? T('unlck') : '🪙 ' + a.p}</p><button class="s" style="margin-top:6px;background:${unl ? '#2e7d32' : '#ff8a1f'};border-bottom-color:rgba(0,0,0,.35)">${sel ? T('seled') : unl ? T('sel') : T('buy')}</button>${unl ? `<button class="s up" style="margin-top:6px;background:#6a4bd6;opacity:${L >= 3 || save.coins >= upCost(k) ? 1 : .5}">${L >= 3 ? T('maxl') : T('upg') + (L + 1) + ' · 🪙 ' + upCost(k)}</button>` : ''}`;
+   c.innerHTML = `<div class="tp">${th ? `<img src="${th}" style="${unl ? '' : 'filter:brightness(.5) saturate(.3)'}">` : `<div style="font-size:64px">${AB[k].i}</div>`}<h3>${AB[k].i} ${T(k)}${unl ? '' : ' 🔒'}</h3><p style="font-size:12px;opacity:.85;margin:0 0 4px"><b>${T('ab_' + k)}</b> L${L} ▾</p></div><div class="dsc" style="display:none;font-size:12px;margin-bottom:6px;text-align:left;background:rgba(0,0,0,.3);border-radius:8px;padding:6px">${T('ab_' + k + '_u' + L)}${L < 3 ? `<br><i style="opacity:.7">${T('next')}${T('ab_' + k + '_u' + (L + 1))}</i>` : ''}</div><p>${unl ? T('unlck') : '🪙 ' + a.p}</p><button class="s" style="margin-top:6px;background:${unl ? '#2e7d32' : '#ff8a1f'};border-bottom-color:rgba(0,0,0,.35)">${sel ? T('seled') : unl ? T('sel') : T('buy')}</button>${unl ? `<button class="s up" style="margin-top:6px;background:#6a4bd6">${L >= 3 ? T('maxl') : T('upg') + (L + 1) + ' · 🪙 ' + upCost(k)}</button>` : ''}`;
    c.querySelector('.tp').onclick = () => { const d = c.querySelector('.dsc'); d.style.display = d.style.display === 'none' ? 'block' : 'none'; };
    c.querySelector('button').onclick = () => { if (unl) { save.skin = k; buildAnimal(k); persist(); renderShop(); } else if (save.coins >= a.p) { save.coins -= a.p; save.skins.push(k); save.skin = k; buildAnimal(k); persist(); renderShop(); } };
   const ub = c.querySelector('.up'); if (ub) ub.onclick = () => { const L = upLv(k), cost = upCost(k); if (L < 3 && save.coins >= cost) { save.coins -= cost; save.up[k] = L + 1; persist(); renderShop(); } };
@@ -734,15 +832,28 @@ function dbgLines(r) { if (!dbgG) return; while (dbgG.children.length) dbgG.remo
 function resize() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); } addEventListener('resize', resize); addEventListener('orientationchange', resize);
 const ang = (a, b) => { let d = b - a; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283; return d; };
 
+function camUpdate(dt, now) {
+ const A = plats[cur], Tl = plats[cur + 1], c = cs, v = dirOf(A, Tl);
+ if (app === 'MENU' || app === 'GAMEOVER') { const a = now * .0004; c.p.set(pos.x + Math.sin(a) * 6.5, pos.y + 3.2, pos.z + Math.cos(a) * 6.5); c.l.set(pos.x, pos.y + 1, pos.z); camera.fov = 52; }
+ else {
+  const k = 1 - Math.exp(-3 * dt); c.dir.x += (v.x - c.dir.x) * k; c.dir.z += (v.z - c.dir.z) * k; const n = Math.hypot(c.dir.x, c.dir.z) || 1; c.dir.x /= n; c.dir.z /= n;
+  c.dolly += ((ph === 'CHARGING' ? cP * 1.6 : 0) - c.dolly) * (1 - Math.exp(-5 * dt)); const back = 11.5 - c.dolly + (ph === 'AIR' || ph === 'BALLOON' || ph === 'GLIDE' ? 2.5 : 0), h = 6.8 - c.dolly * .3; let want, look;
+  if (ph === 'FALLING' || ph === 'DEAD') { want = fallCam; look = new THREE.Vector3(pos.x, pos.y, pos.z); }
+  else { want = new THREE.Vector3(pos.x - c.dir.x * back, pos.y + h, pos.z - c.dir.z * back); look = new THREE.Vector3(pos.x + (Tl.x - pos.x) * .38, pos.y + (Tl.y - pos.y) * .3 + .8, pos.z + (Tl.z - pos.z) * .38); }
+  c.p.lerp(want, 1 - Math.exp(-4.5 * dt)); c.l.lerp(look, 1 - Math.exp(-6 * dt)); const asp = innerWidth / innerHeight; const f = (asp < .75 ? 76 : 60) + (ph === 'AIR' && res ? cl(res.vh / 15) * 4 : 0); c.fov += (f - c.fov) * (1 - Math.exp(-4 * dt)); camera.fov = c.fov;
+ }
+ c.shake *= Math.exp(-8 * dt); camera.position.set(c.p.x + (Math.random() - .5) * c.shake, c.p.y + (Math.random() - .5) * c.shake + Math.sin(now * .0013) * .03, c.p.z + (Math.random() - .5) * c.shake); camera.lookAt(c.l); camera.updateProjectionMatrix();
+}
+
 function update(dt, now) {
  if (app === 'PLAY' && !paused) { runT += dt; ghostUpd(); }
  const A = plats[cur], Tl = plats[cur + 1], d = dirOf(A, Tl), yt = Math.atan2(d.x, d.z);
- if (ph !== 'AIR' && ph !== 'FALLING' && ph !== 'DEAD' && ph !== 'BALLOON' && ph !== 'GLIDE' && ph !== 'STRIDE' && fox) fox.rotation.y += ang(fox.rotation.y, yt) * (1 - Math.exp(-9 * dt));
+ if (ph !== 'AIR' && ph !== 'FALLING' && ph !== 'DEAD' && ph !== 'BALLOON' && ph !== 'GLIDE' && fox) fox.rotation.y += ang(fox.rotation.y, yt) * (1 - Math.exp(-9 * dt));
  const bs = body.scale; let tp = 1.2 * now / 1000;
  for (const [i, m] of pm) { m.children.forEach(c => { if (c.userData && c.userData.gift) c.rotation.y += dt * 1.5; }); }
  
  switch (ph) {
-  case 'IDLE': bs.set(1, 1 + .02 * Math.sin(tp * 2), 1); body.rotation.x = 0; tail.rotation.y = .25 * Math.sin(tp * 2); if (giantQ && AB_on('dino') && fox.userData.legs) { giantQ = false; startGiant(); break; } if (want || (held && app === 'PLAY')) startCharge(); break;
+  case 'IDLE': bs.set(1, 1 + .02 * Math.sin(tp * 2), 1); body.rotation.x = 0; tail.rotation.y = .25 * Math.sin(tp * 2); if (want || (held && app === 'PLAY')) startCharge(); break;
   case 'CHARGING': {
    const ms = Math.min(PH.maxMs, Math.floor(now - t0 - pa)); cP = curveP(ms); const P = cP; bs.set(1 + .25 * P, 1 - .4 * P, 1 + .25 * P); body.rotation.x = .12 * P; body.position.x = P > .8 ? Math.sin(now * .06) * .03 * (P - .8) * 5 : 0; tail.rotation.y = Math.sin(now * .004 * (1 + P * 4)) * .4; AU.charge(P, true);
    if (P >= .4 && !cue[0]) { cue[0] = 1; vib(12); } if (P >= .7 && !cue[1]) { cue[1] = 1; vib(20); } if (ms >= PH.maxMs && !cue[2]) { cue[2] = 1; vib(45); AU.blip(1000, .25, 'square', .08); emit(pos.x, pos.y + 1, pos.z, 20, [1, .8, .3], 1.8, 2.5); }
@@ -765,7 +876,7 @@ function update(dt, now) {
    if (lt > (res.claw ? 1 : (landZ === 'EDGE' && !AB_on('capybara')) ? .7 : .4)) { 
     body.rotation.z = 0; 
     if (success && L) { pos.x = L.x; pos.y = L.y; pos.z = L.z; ph = 'IDLE'; fox.rotation.x = 0; ensure(); 
-     if (L.gift && !L.giftCollected) { L.giftCollected = true; const m = pm.get(L.idx); if (m) m.children.forEach(c => { if (c.userData && c.userData.gift) c.visible = false; }); openGiftUI(); } else if (!giantQ && (want || held)) { startCharge(); }
+     if (L.gift && !L.giftCollected) { L.giftCollected = true; const m = pm.get(L.idx); if (m) m.children.forEach(c => { if (c.userData && c.userData.gift) c.visible = false; }); openGiftUI(); } else if (want || held) { startCharge(); }
     } else if (res.landed && res.landed.idx === cur) { pos.x = res.landed.x; pos.z = res.landed.z; ph = 'IDLE'; fox.rotation.x = 0; if (want || held) startCharge(); } else { die(); } 
    } break;
   }
@@ -776,7 +887,6 @@ function update(dt, now) {
    if (balMesh) { balMesh.rotation.z = sway; balMesh.rotation.x = Math.cos(now * 0.002) * 0.1; }
    if (p >= 1) { pos.x = flightEnd.x; pos.y = flightEnd.y; pos.z = flightEnd.z; ph = 'LANDING'; lt = 0; landZ = 'PERFECT'; if (balMesh) balMesh.visible = false; fox.rotation.z = 0; fox.rotation.y = 0; AU.land('PERFECT'); res = { landed: flightEnd, out: 'SUCCESS', zone: 'PERFECT' }; ensure(); } break;
   }
-  case 'STRIDE': stepGiant(dt, now); break;
   case 'GLIDE': {
     gT += dt / gDur; const p = Math.min(gT, 1), ep = p * p * (3 - 2 * p);
     pos.x = gStart.x + (gEnd.x - gStart.x) * ep; pos.z = gStart.z + (gEnd.z - gStart.z) * ep; pos.y = gStart.y + (gEnd.y - gStart.y) * ep + Math.sin(Math.PI * p) * 5;
@@ -792,21 +902,8 @@ function update(dt, now) {
   wf += (tf - wf) * (1 - Math.exp(-9 * dt)); const w = th + Math.sin(now * fq) * am, lag = Math.sin(now * fq - 1) * am * .5;
   wR.rotation.set(0, wf, w); wL.rotation.set(0, -wf, -w); tipR.rotation.z = lag; tipL.rotation.z = -lag;
  }
- if (fox.userData.trex && ph !== 'STRIDE') trexAnimate(now);
+ if (fox && fox.userData && fox.userData.trex) trexAnimate(now);
  if (fox) { fox.position.set(pos.x, pos.y, pos.z); if (ph === 'IDLE' || ph === 'CHARGING' || ph === 'LANDING') fox.rotation.x = 0; }
-}
-
-function camUpdate(dt, now) {
- const A = plats[cur], Tl = plats[cur + 1], c = cs, v = dirOf(A, Tl);
- if (app === 'MENU' || app === 'GAMEOVER') { const a = now * .0004; c.p.set(pos.x + Math.sin(a) * 6.5, pos.y + 3.2, pos.z + Math.cos(a) * 6.5); c.l.set(pos.x, pos.y + 1, pos.z); camera.fov = 52; }
- else {
-  const k = 1 - Math.exp(-3 * dt); c.dir.x += (v.x - c.dir.x) * k; c.dir.z += (v.z - c.dir.z) * k; const n = Math.hypot(c.dir.x, c.dir.z) || 1; c.dir.x /= n; c.dir.z /= n;
-  c.dolly += ((ph === 'CHARGING' ? cP * 1.6 : 0) - c.dolly) * (1 - Math.exp(-5 * dt)); const gz = Math.max(0, gsc - 1), back = 11.5 - c.dolly + (ph === 'AIR' || ph === 'BALLOON' ? 2.5 : 0) + gz * 2.6, h = 6.8 - c.dolly * .3 + gz * 1.5; let want, look;
-  if (ph === 'FALLING' || ph === 'DEAD') { want = fallCam; look = new THREE.Vector3(pos.x, pos.y, pos.z); }
-  else { want = new THREE.Vector3(pos.x - c.dir.x * back, pos.y + h, pos.z - c.dir.z * back); look = new THREE.Vector3(pos.x + (Tl.x - pos.x) * .38, pos.y + (Tl.y - pos.y) * .3 + .8 + gz * 1.4, pos.z + (Tl.z - pos.z) * .38); }
-  c.p.lerp(want, 1 - Math.exp(-4.5 * dt)); c.l.lerp(look, 1 - Math.exp(-6 * dt)); const asp = innerWidth / innerHeight; const f = (asp < .75 ? 76 : 60) + (ph === 'AIR' && res ? cl(res.vh / 15) * 4 : 0); c.fov += (f - c.fov) * (1 - Math.exp(-4 * dt)); camera.fov = c.fov;
- }
- c.shake *= Math.exp(-8 * dt); camera.position.set(c.p.x + (Math.random() - .5) * c.shake, c.p.y + (Math.random() - .5) * c.shake + Math.sin(now * .0013) * .03, c.p.z + (Math.random() - .5) * c.shake); camera.lookAt(c.l); camera.updateProjectionMatrix();
 }
 
 let last = 0;
@@ -821,14 +918,16 @@ function frame(now) {
  if (save.dbg && now - dbgT > 150) { dbgT = now; const Tl = plats[cur + 1] || {}, a = Tl.an || {}, r = lastRes || {}; $('dbg').textContent = `seed ${seed} idx ${cur + 1}\ncharge ${ph === 'CHARGING' ? Math.floor(now - t0 - pa) : r.ms | 0}ms P ${(ph === 'CHARGING' ? cP : r.P || 0).toFixed(2)}\nreqP ${(a.reqP || 0).toFixed(2)} win ${a.win | 0}ms\ndist ${(a.dist || 0).toFixed(1)} dY ${(a.dy || 0).toFixed(1)}\nfps ${fpsA | 0} pr ${pr.toFixed(2)}`; }
 }
 
-$('play').onclick = () => play(); $('pz').onclick = () => { if (ph !== 'DEAD') { AU.click(); setPause(true); } }; $('res').onclick = () => setPause(false); $('menub').onclick = () => { setPause(false); toMenu(); };
+// Events
+$('play').onclick = () => { promptNameIfNeeded(() => play()) };
+$('pz').onclick = () => { if (ph !== 'DEAD') { AU.click(); setPause(true); } }; $('res').onclick = () => setPause(false); $('menub').onclick = () => { setPause(false); toMenu(); };
 $('setb').onclick = () => { AU.click(); show('set', 1); setT(); }; $('back').onclick = () => show('set', 0);
 $('shopb').onclick = () => { AU.click(); show('menu', 0); app = 'SHOP'; show('shop', 1); renderShop(); };
 $('shopclose').onclick = () => { AU.click(); show('shop', 0); toMenu(); };
-$('secbtn').onclick = () => { AU.click(); const ok = $('seccode').value.replace(/\D/g, '') === '3645868', inp = $('seccode'); inp.style.background = ok ? '#a5d6a7' : '#ef9a9a'; setTimeout(() => inp.style.background = '', 1000); if (ok) { Object.keys(AN).forEach(k => { if (!save.skins.includes(k)) save.skins.push(k); }); persist(); renderShop(); $('seccode').value = ''; msg(T('m_all'), 1500); } else { msg(T('m_inv'), 1000); } };
-$('daily').onclick = () => { const d = dayIdx(); if (save.sk.d !== d) { save.sk.n = save.sk.d === d - 1 ? save.sk.n + 1 : 1; save.sk.d = d; persist(); } play(todaySeed()); };
+$('secbtn').onclick = () => { AU.click(); if ($('seccode').value.trim() === '3645868') { Object.keys(AN).forEach(k => { if (!save.skins.includes(k)) save.skins.push(k); }); persist(); renderShop(); $('seccode').value = ''; msg(T('m_all'), 1500); } else { msg(T('m_inv'), 1000); } };
+$('daily').onclick = () => { promptNameIfNeeded(() => { const d = dayIdx(); if (save.sk.d !== d) { save.sk.n = save.sk.d === d - 1 ? save.sk.n + 1 : 1; save.sk.d = d; persist(); } play(todaySeed()); }); };
 $('again-same').onclick = () => play(seed);
-$('share').onclick = () => { const h = mOf(maxIdx), url = location.href.split('?')[0] + '?seed=' + seed, txt = `Animal Jump: I reached ${h} m! Beat me on the same level:`; if (navigator.share) navigator.share({ title: 'Animal Jump', text: txt, url }).catch(() => {}); else { try { navigator.clipboard.writeText(txt + ' ' + url); } catch (e) {} $('share').textContent = 'LINK COPIED ✓'; } };
+$('share').onclick = () => { const h = Math.round(plats[maxIdx].y * 10), url = location.href.split('?')[0] + '?seed=' + seed, txt = `Animal Jump: I reached ${h} m! Beat me on the same level:`; if (navigator.share) navigator.share({ title: 'Animal Jump', text: txt, url }).catch(() => {}); else { try { navigator.clipboard.writeText(txt + ' ' + url); } catch (e) {} $('share').textContent = 'LINK COPIED ✓'; } };
 $('replay').onclick = () => { AU.click(); play(); }; $('gomenub').onclick = () => { AU.click(); toMenu(); };
 $('gift-ok').onclick = () => { AU.click(); show('gift-ui', 0); app = 'PLAY'; paused = false; last = performance.now(); if (giftPrize === 0) startBalloonFlight(); else if (want || held) startCharge(); };
 $('tv').onclick = () => { save.vib = save.vib ? 0 : 1; persist(); setT(); }; $('ts').onclick = () => { save.snd = save.snd ? 0 : 1; persist(); setT(); if (AU.m) AU.m.gain.value = save.snd ? .5 : 0; else AU.init(); }; $('td').onclick = toggleDbg;
@@ -838,7 +937,12 @@ function boot() {
  if (!window.THREE) { $('lt').textContent = 'Could not load Three.js.'; return; }
  try { build(); $('dbg').style.display = save.dbg ? 'block' : 'none'; AU.m || 0; cs.p = new THREE.Vector3(0, 6, 10); cs.l = new THREE.Vector3(); newRun(); toMenu(); setTimeout(() => { $('load').style.opacity = 0; $('load').style.transition = 'opacity .5s'; setTimeout(() => show('load', 0), 500); }, 400); requestAnimationFrame(frame); } catch (e) { console.error(e); $('lt').textContent = 'WebGL is not available.'; }
 }
-boot();
+
+// Start sequence
+initCloud();
+
 </script>
 </body>
 </html>
+
+<!-- Animal Jump release 2026-10-06: republished from the current verified main version -->
