@@ -584,7 +584,7 @@ function legsIK(yaw, foot) {
 function startGiant() {
  const n = [4, 5, 6][lv() - 1]; ensureTo(cur + n + G.gen.ahead); const pts = [], yaw = [], gp = [];
  for (let i = 0; i <= n; i++) pts.push(plats[cur + i]);
- for (let i = 0; i < n; i++) { gp.push(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y)); yaw.push(Math.atan2(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)); }
+ for (let i = 0; i < n; i++) { gp.push(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)); yaw.push(Math.atan2(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)); }
  giant = { n, pts, yaw, S: cl(Math.max(...gp) * .9, 4.2, 8.5), ph: 'GROW', t: 0, k: 0, sq: null }; ph = 'STRIDE'; run.ok = false; fox.rotation.y = yaw[0];
  msg(T('stomp_msg'), 1600); AU.blip(70, .9, 'sawtooth', .3, 30); vib([40, 40, 90]);
 }
