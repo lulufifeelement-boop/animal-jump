@@ -535,6 +535,7 @@ function shadeModel(root) {
 }
 let gsc = 1;
 /* ===== T. rex: bipedal, big skull, long counter-balancing tail, tiny two-fingered arms, long hind legs (2-bone IK, knee forward) ===== */
+let _D = null, _V = null;
 function trexLegs(L, F) {
  const A = .55, B = .55, hy = .92; _D = _D || new THREE.Vector3(0, -1, 0); _V = _V || new THREE.Vector3();
  const vx = F.x - L.hx, vy = F.y - hy, vz = F.z - L.hz, d = Math.max(.05, Math.hypot(vx, vy, vz)), ux = vx / d, uy = vy / d, uz = vz / d;
