@@ -772,7 +772,13 @@ function platTex(kind, base, seed) {
  const ctx = cv.getContext('2d'), rr = new RNG(hash(913, seed, base));
  const hex = '#' + base.toString(16).padStart(6, '0');
  const grad = ctx.createLinearGradient(0, 0, 0, N);
- grad.addColorStop(0, hex); grad.addColorStop(1, '#111723');
+ if (kind === 'grass') {
+   grad.addColorStop(0, '#70c84e'); grad.addColorStop(0.5, '#70c84e'); grad.addColorStop(1, '#70c84e');
+ } else if (kind === 'moss') {
+   grad.addColorStop(0, hex); grad.addColorStop(1, '#466f3d');
+ } else {
+   grad.addColorStop(0, hex); grad.addColorStop(1, '#111723');
+ }
  ctx.fillStyle = grad; ctx.fillRect(0, 0, N, N);
  const dot = (x,y,r,c,a)=>{ctx.fillStyle=c;ctx.globalAlpha=a;ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();ctx.globalAlpha=1;};
  if (kind === 'grass' || kind === 'moss') {
