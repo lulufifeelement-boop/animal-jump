@@ -51,7 +51,17 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 <button id="pz" class="s">II</button>
 <div id="msg"></div><div id="dbg"></div><div id="fade"></div>
 
-<div id="load" class="ov"><h1>Animal Jump</h1><p id="lt">Starting game…</p></div>
+<div id="load" class="ov"><h1>Animal Jump</h1><p id="lt">Запуск игры…</p></div>
+<script>
+window.addEventListener('error', function(e) {
+  var el=document.getElementById('lt');
+  if(el) el.textContent='Ошибка запуска: '+(e.message||'JavaScript');
+});
+window.addEventListener('unhandledrejection', function(e) {
+  var el=document.getElementById('lt');
+  if(el) el.textContent='Ошибка запуска: '+((e.reason&&e.reason.message)||e.reason||'Promise');
+});
+</script>
 
 <div id="menu" class="ov h">
   <h1>Animal Jump</h1>
@@ -128,7 +138,7 @@ button.s{background:rgba(20,40,80,.8);border-bottom-color:rgba(0,0,0,.5);font-si
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
-<script type="module">
+<script>
 "use strict";
 
 let initializeApp = null, getAuth = null, signInAnonymously = null;
