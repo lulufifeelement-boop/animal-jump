@@ -437,7 +437,7 @@ const curSkin = () => (run && run.tmp) || save.skin;
 const AB_on = id => !!run && !run.classic && curSkin() === id;
 function endTmp() { if (run && run.tmp) { run.tmp = null; const ry = fox.rotation.y; buildAnimal(save.skin); fox.rotation.y = ry; abHud(); } }
 const giftGap = i => AB_on('fox') ? [7, 6, 5][lv() - 1] + (i % 5) : 10 + (i % 6);
-function abHud() { const e = $('ab'); if (!run) return; if (run.classic) { e.textContent = 'Classic mode · no abilities'; return; } const k = curSkin(), a = AB[k]; if (!a) return; e.textContent = (run.tmp ? '🐾❓ ' : '') + a.i + ' ' + T('ab_'+k) + ' L' + lv() + (k === 'cat' ? ' ×' + clawCh : k === 'dino' && stompN ? ' · ' + dinoC + '/' + [3, 2, 2][lv() - 1] : k === 'goose' ? (maxIdx >= (run.gAt || 0) ? ' ✓' : ' ⏳' + ((run.gAt || 0) - maxIdx)) : ''); }
+function abHud() { const e = $('ab'); if (!run) return; if (run.classic) { e.textContent = 'Classic mode · no abilities'; return; } const k = curSkin(), a = AB[k]; if (!a) return; e.textContent = (run.tmp ? '🐾❓ ' : '') + a.i + ' ' + T('ab_'+k) + ' L' + lv() + (k === 'cat' ? ' ×' + clawCh : k === 'dino' ? ' · ' + dinoC + '/' + [3, 3, 2][lv() - 1] : k === 'goose' ? (maxIdx >= (run.gAt || 0) ? ' ✓' : ' ⏳' + ((run.gAt || 0) - maxIdx)) : ''); }
 function tryClaw(r, Tl) {
  const reach = [1.2, 1.8, 2.5][lv() - 1], g = PH.g, cy = Tl.y - [1.2, 1.6, 2][lv() - 1], ds = r.vy * r.vy - 2 * g * (cy - r.s.y); if (ds < 0) return;
  const t = (r.vy + Math.sqrt(ds)) / g, q = pathAt(r, t), d = Math.hypot(q.x - Tl.x, q.z - Tl.z);
@@ -533,7 +533,7 @@ function shadeModel(root) {
   g.setAttribute('color', new THREE.BufferAttribute(c, 3)); o.material = VCM(o.material);
  });
 }
-let gsc = 1;
+let gsc = 1, giant = null, giantQ = false, stompN = 0, dinoC = 0, _D = null, _V = null;
 /* ===== T. rex: bipedal, big skull, long counter-balancing tail, tiny two-fingered arms, long hind legs (2-bone IK, knee forward) ===== */
 let _D = null, _V = null;
 function trexLegs(L, F) {
@@ -576,6 +576,51 @@ function buildTRex() {
  }
  trexAnimate(0); shadeModel(fox); scene.add(fox); if (typeof pos !== 'undefined' && pos) fox.position.set(pos.x, pos.y, pos.z);
 }
+const smooth = x => x * x * (3 - 2 * x), eob = x => 1 + 2.70158 * (x - 1) ** 3 + 1.70158 * (x - 1) ** 2;
+function legsIK(yaw, foot) {
+ const S = gsc, c = Math.cos(yaw), sn = Math.sin(yaw);
+ fox.userData.legs.forEach((L, i) => { const F = foot(i, L), dx = F.x - pos.x, dz = F.z - pos.z; trexLegs(L, { x: (dx * c - dz * sn) / S, y: (F.y - pos.y) / S, z: (dx * sn + dz * c) / S }); });
+}
+function startGiant() {
+ const n = [4, 5, 6][lv() - 1]; ensureTo(cur + n + G.gen.ahead); const pts = [], yaw = [], gp = [];
+ for (let i = 0; i <= n; i++) pts.push(plats[cur + i]);
+ for (let i = 0; i < n; i++) { gp.push(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y)); yaw.push(Math.atan2(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)); }
+ giant = { n, pts, yaw, S: cl(Math.max(...gp) * .9, 4.2, 8.5), ph: 'GROW', t: 0, k: 0, sq: null }; ph = 'STRIDE'; run.ok = false; fox.rotation.y = yaw[0];
+ msg(T('stomp_msg'), 1600); AU.blip(70, .9, 'sawtooth', .3, 30); vib([40, 40, 90]);
+}
+function stepGiant(dt, now) {
+ const g = giant, n = g.n, pts = g.pts, S = g.S, legs = fox.userData.legs; g.t += dt; let yaw = fox.rotation.y;
+ const plant = (j, i) => { const L = legs[i], jj = cl(j, 0, n), y0 = g.yaw[Math.min(jj, n - 1)], c0 = Math.cos(y0), s0 = Math.sin(y0), P = pts[jj], lat = Math.sign(L.hx) * Math.min(Math.abs(L.hx) * S * .5, P.r * .4); return { x: P.x + lat * c0, y: P.y, z: P.z - lat * s0 }; };
+ fox.userData.arms.forEach((a, i) => { a.rotation.x = Math.sin(now * .012 + i) * .5 - .3; });
+ if (g.ph === 'GROW') {
+  const u = Math.min(1, g.t / 1.3), cr = u < .2 ? 1 - .16 * Math.sin(Math.PI * u / .2) : 1 + (S - 1) * eob((u - .2) / .8);
+  gsc = cr; body.scale.set(gsc, gsc * (1 + .04 * Math.sin(now * .04) * (u > .5 ? 1 : 0)), gsc);
+  const rr = cl((u - .12) / .16) * (1 - cl((u - .84) / .16)), jw = fox.userData.jaw;
+  head.rotation.x = (u < .2 ? .25 * Math.sin(Math.PI * u / .2) : 0) - .55 * rr; jw.rotation.x = rr * (.8 + .1 * Math.sin(now * .05));
+  if (u > .14 && !g.r) { g.r = 1; AU.blip(95, 1.1, 'sawtooth', .4, 40); if (AU.noise) AU.noise(.9, 260, .3); vib([30, 30, 60]); }
+  tail.rotation.y = Math.sin(now * .01) * .3;
+  if (u > .2 && !g.b) { g.b = 1; cs.shake = .7; emit(pos.x, pos.y + .1, pos.z, 60, [.85, .8, .6], 6, 2.5); }
+  legsIK(yaw, (i) => plant(0, i));
+  if (u >= 1) { g.ph = 'WALK'; g.t = 0; g.u = 0; cs.shake = .5; emit(pos.x, pos.y + .1, pos.z, 40, [1, .9, .5], 7, 3); }
+ } else if (g.ph === 'WALK') {
+  const k = g.k, P0 = pts[k], P1 = pts[k + 1], d = Math.hypot(P1.x - P0.x, P1.z - P0.z), D = Math.max(.85, d / (S * 2.4)); g.u += dt / D; const u = Math.min(1, g.u), e = smooth(u);
+  pos.x = P0.x + (P1.x - P0.x) * e; pos.z = P0.z + (P1.z - P0.z) * e; pos.y = P0.y + (P1.y - P0.y) * e + Math.sin(Math.PI * u) * .1 * S;
+  fox.rotation.y += ang(fox.rotation.y, g.yaw[k]) * (1 - Math.exp(-8 * dt)); yaw = fox.rotation.y;
+  body.rotation.z = 0; head.rotation.x = Math.sin(now * .006) * .05; tail.rotation.y = -Math.sin(Math.PI * (k + u)) * .35; body.scale.set(S, S, S);
+  legsIK(yaw, (i) => { if (i === k % 2) return plant(k, i); const a = plant(k === 0 ? 0 : k - 1, i), b = plant(k + 1, i), es = smooth(cl((u - .08) / .84)); return { x: a.x + (b.x - a.x) * es, z: a.z + (b.z - a.z) * es, y: a.y + (b.y - a.y) * es + Math.sin(Math.PI * es) * .3 * S }; });
+  if (u >= 1) {
+   const L = pts[k + 1]; cur = L.idx; if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (Math.round(L.y * 10) > save.best) save.best = Math.round(L.y * 10); } save.coins += 2; run.coins += 2; qAdd('coins', 2); qMax('height', Math.round(L.y * 10)); persist(); ensure(); hud();
+   cs.shake = .4; AU.blip(80, .3, 'sine', .35, 35); vib(25); emit(L.x, L.y + .1, L.z, 40, [.85, .8, .6], 6, 2.2); g.sq = { i: L.idx, t: 0 }; g.k++; g.u = 0;
+   if (g.k >= n) { g.ph = 'SHRINK'; g.t = 0; emit(pos.x, pos.y + 1, pos.z, 50, [.6, 1, .6], 5, 4); AU.blip(300, .5, 'triangle', .2, 900); }
+  }
+ } else {
+  const u = Math.min(1, g.t / .9); gsc = 1 + (S - 1) * (1 - smooth(u)); body.scale.set(gsc, gsc, gsc); body.rotation.z *= .9; head.rotation.x *= .9; fox.userData.jaw.rotation.x *= .8;
+  legsIK(yaw, (i) => plant(n, i));
+  if (u >= 1) { gsc = 1; body.scale.set(1, 1, 1); body.rotation.set(0, 0, 0); head.rotation.x = 0; fox.userData.jaw.rotation.x = 0; const L = plats[cur]; pos.x = L.x; pos.y = L.y; pos.z = L.z; giant = null; ph = 'LANDING'; lt = 0; landZ = 'NORMAL'; res = { landed: L, out: 'SUCCESS', zone: 'NORMAL' }; AU.land('NORMAL'); abHud(); return; }
+ }
+ if (g.sq) { const m = pm.get(g.sq.i); if (m) { g.sq.t += dt; const q = Math.exp(-g.sq.t * 7) * Math.cos(g.sq.t * 22); m.scale.set(1 + .05 * q, 1 - .1 * q, 1 + .05 * q); if (g.sq.t > .6) { m.scale.set(1, 1, 1); g.sq = null; } } }
+}
+
 function buildGoose() {
  if (fox) scene.remove(fox); fox = new THREE.Group(); body = new THREE.Group(); fox.add(body);
  const wh = TM(0xffffff, 'feathers'), gy = TM(0xdfe3e8, 'feathers'), org = M(0xffa51f, .35), dk = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: .06, metalness: .15 }), hl = new THREE.MeshBasicMaterial({ color: 0xffffff }), tipM = TM(0x7d8794, 'feathers');
@@ -731,11 +776,11 @@ function onLand() {
   const skipped = L.idx > cur + 1; if (L.idx > cur) cur = L.idx; ensure(); if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (Math.round(L.y * 10) > save.best) save.best = Math.round(L.y * 10); }
   let earned = 1;
   if (res.zone === 'PERFECT') {
-   combo++; perfects++; qAdd('perf'); dinoC++; if (AB_on('dino') && stompN > 0 && dinoC >= [3, 2, 2][lv() - 1]) { stompN--; dinoC = 0; lives++; updHearts(); setTimeout(() => msg(T('stomp_msg'), 1000), 500); AU.blip(90, .3, 'sawtooth', .25, 40); cs.shake = .5; } earned = 1 + Math.min(combo, 5);
+   combo++; perfects++; qAdd('perf'); dinoC++; if (AB_on('dino') && dinoC >= [3, 3, 2][lv() - 1]) { dinoC = 0; giantQ = true; } earned = 1 + Math.min(combo, 5);
    if (combo > 1) msg(T('m_perf') + ' x' + combo); else msg(T('m_perf') + '!'); 
   } else {
    if (AB_on('capybara') && res.zone === 'EDGE') { if (lv() >= 3) combo++; } else combo = 0;
-   dinoC = 0; if (res.claw) msg(T('claws_msg'), 900); else if (res.zone === 'EDGE') msg(T('m_sav'), 700); else if (skipped) msg(T('m_lj'), 700);
+   if (res.claw) msg(T('claws_msg'), 900); else if (res.zone === 'EDGE') msg(T('m_sav'), 700); else if (skipped) msg(T('m_lj'), 700);
   }
   if (AB_on('pig')) earned *= [3, 4, 5][lv() - 1]; if (doubleCoins > 0) { earned *= 2; doubleCoins--; } if (AB_on('bunny')) { cFrac += earned * [.25, .35, .5][lv() - 1] + (res.zone === 'EDGE' ? (lv() === 3 ? 2 : 1) : 0); const bn = Math.floor(cFrac); cFrac -= bn; earned += bn; } if (AB_on('capybara') && res.zone === 'EDGE' && lv() >= 2) earned += 1; save.coins += earned; run.coins += earned; qAdd('coins', earned);
   if (maxIdx >= lastCp + G.gen.cp) { lastCp = maxIdx; AU.cp(); msg(T('m_cp'), 1200); }
@@ -747,7 +792,7 @@ function onLand() {
  hud(); dbgLines();
 }
 
-function die() { ph = 'DEAD'; dtm = 0; AU.fall(); vib(60); $('fade').style.opacity = 1; lives--; if (AB_on('dino')) stompN = Math.min(lv() === 3 ? 2 : 1, stompN + 1); updHearts(); }
+function die() { ph = 'DEAD'; dtm = 0; AU.fall(); vib(60); $('fade').style.opacity = 1; lives--; if (!AB_on('dino')) giantQ = false; updHearts(); }
 
 function gameOver() {
  app = 'GAMEOVER'; ph = 'IDLE'; paused = false; cancelCharge(); respawn(); 
@@ -785,7 +830,7 @@ function toMenu() { renderQ();
  updateTexts(); if (!plats.length || lives <= 0) newRun();
 }
 
-function play(s) { AU.init(); AU.click(); const cls = !!(s || urlSeed); nextSeed = s || urlSeed; urlSeed = 0; newRun(); run.classic = cls; clawCh = 1; abM10 = abM20 = 0; cFrac = 0; if (AB_on('bear')) { lives = 6; updHearts(); } stompN = dinoC = 0; abHud(); app = 'PLAY'; show('menu', 0); show('go', 0); $('hud').style.display = 'block'; $('pz').style.display = 'block'; msg(T('hold'), 1200); }
+function play(s) { AU.init(); AU.click(); const cls = !!(s || urlSeed); nextSeed = s || urlSeed; urlSeed = 0; newRun(); run.classic = cls; clawCh = 1; abM10 = abM20 = 0; cFrac = 0; if (AB_on('bear')) { lives = 6; updHearts(); } stompN = dinoC = 0; giant = null; giantQ = false; gsc = 1; abHud(); app = 'PLAY'; show('menu', 0); show('go', 0); $('hud').style.display = 'block'; $('pz').style.display = 'block'; msg(T('hold'), 1200); }
 
 function renderShop() {
  if (!THUMB._d) { THUMB._d = 1; try { makeThumbs(); } catch (e) { console.error(e); } }
@@ -838,9 +883,9 @@ function camUpdate(dt, now) {
  if (app === 'MENU' || app === 'GAMEOVER') { const a = now * .0004; c.p.set(pos.x + Math.sin(a) * 6.5, pos.y + 3.2, pos.z + Math.cos(a) * 6.5); c.l.set(pos.x, pos.y + 1, pos.z); camera.fov = 52; }
  else {
   const k = 1 - Math.exp(-3 * dt); c.dir.x += (v.x - c.dir.x) * k; c.dir.z += (v.z - c.dir.z) * k; const n = Math.hypot(c.dir.x, c.dir.z) || 1; c.dir.x /= n; c.dir.z /= n;
-  c.dolly += ((ph === 'CHARGING' ? cP * 1.6 : 0) - c.dolly) * (1 - Math.exp(-5 * dt)); const back = 11.5 - c.dolly + (ph === 'AIR' || ph === 'BALLOON' || ph === 'GLIDE' ? 2.5 : 0), h = 6.8 - c.dolly * .3; let want, look;
+  c.dolly += ((ph === 'CHARGING' ? cP * 1.6 : 0) - c.dolly) * (1 - Math.exp(-5 * dt)); const gz = Math.max(0, gsc - 1), back = 11.5 - c.dolly + (ph === 'AIR' || ph === 'BALLOON' || ph === 'GLIDE' ? 2.5 : 0) + gz * 2.6, h = 6.8 - c.dolly * .3 + gz * 1.5; let want, look;
   if (ph === 'FALLING' || ph === 'DEAD') { want = fallCam; look = new THREE.Vector3(pos.x, pos.y, pos.z); }
-  else { want = new THREE.Vector3(pos.x - c.dir.x * back, pos.y + h, pos.z - c.dir.z * back); look = new THREE.Vector3(pos.x + (Tl.x - pos.x) * .38, pos.y + (Tl.y - pos.y) * .3 + .8, pos.z + (Tl.z - pos.z) * .38); }
+  else { want = new THREE.Vector3(pos.x - c.dir.x * back, pos.y + h, pos.z - c.dir.z * back); look = new THREE.Vector3(pos.x + (Tl.x - pos.x) * .38, pos.y + (Tl.y - pos.y) * .3 + .8 + gz * 1.4, pos.z + (Tl.z - pos.z) * .38); }
   c.p.lerp(want, 1 - Math.exp(-4.5 * dt)); c.l.lerp(look, 1 - Math.exp(-6 * dt)); const asp = innerWidth / innerHeight; const f = (asp < .75 ? 76 : 60) + (ph === 'AIR' && res ? cl(res.vh / 15) * 4 : 0); c.fov += (f - c.fov) * (1 - Math.exp(-4 * dt)); camera.fov = c.fov;
  }
  c.shake *= Math.exp(-8 * dt); camera.position.set(c.p.x + (Math.random() - .5) * c.shake, c.p.y + (Math.random() - .5) * c.shake + Math.sin(now * .0013) * .03, c.p.z + (Math.random() - .5) * c.shake); camera.lookAt(c.l); camera.updateProjectionMatrix();
@@ -849,12 +894,12 @@ function camUpdate(dt, now) {
 function update(dt, now) {
  if (app === 'PLAY' && !paused) { runT += dt; ghostUpd(); }
  const A = plats[cur], Tl = plats[cur + 1], d = dirOf(A, Tl), yt = Math.atan2(d.x, d.z);
- if (ph !== 'AIR' && ph !== 'FALLING' && ph !== 'DEAD' && ph !== 'BALLOON' && ph !== 'GLIDE' && fox) fox.rotation.y += ang(fox.rotation.y, yt) * (1 - Math.exp(-9 * dt));
+ if (ph !== 'AIR' && ph !== 'FALLING' && ph !== 'DEAD' && ph !== 'BALLOON' && ph !== 'GLIDE' && ph !== 'STRIDE' && fox) fox.rotation.y += ang(fox.rotation.y, yt) * (1 - Math.exp(-9 * dt));
  const bs = body.scale; let tp = 1.2 * now / 1000;
  for (const [i, m] of pm) { m.children.forEach(c => { if (c.userData && c.userData.gift) c.rotation.y += dt * 1.5; }); }
  
  switch (ph) {
-  case 'IDLE': bs.set(1, 1 + .02 * Math.sin(tp * 2), 1); body.rotation.x = 0; tail.rotation.y = .25 * Math.sin(tp * 2); if (want || (held && app === 'PLAY')) startCharge(); break;
+  case 'IDLE': bs.set(1, 1 + .02 * Math.sin(tp * 2), 1); body.rotation.x = 0; tail.rotation.y = .25 * Math.sin(tp * 2); if (giantQ && AB_on('dino') && fox.userData.legs) { giantQ = false; startGiant(); break; } if (want || (held && app === 'PLAY')) startCharge(); break;
   case 'CHARGING': {
    const ms = Math.min(PH.maxMs, Math.floor(now - t0 - pa)); cP = curveP(ms); const P = cP; bs.set(1 + .25 * P, 1 - .4 * P, 1 + .25 * P); body.rotation.x = .12 * P; body.position.x = P > .8 ? Math.sin(now * .06) * .03 * (P - .8) * 5 : 0; tail.rotation.y = Math.sin(now * .004 * (1 + P * 4)) * .4; AU.charge(P, true);
    if (P >= .4 && !cue[0]) { cue[0] = 1; vib(12); } if (P >= .7 && !cue[1]) { cue[1] = 1; vib(20); } if (ms >= PH.maxMs && !cue[2]) { cue[2] = 1; vib(45); AU.blip(1000, .25, 'square', .08); emit(pos.x, pos.y + 1, pos.z, 20, [1, .8, .3], 1.8, 2.5); }
@@ -877,10 +922,11 @@ function update(dt, now) {
    if (lt > (res.claw ? 1 : (landZ === 'EDGE' && !AB_on('capybara')) ? .7 : .4)) { 
     body.rotation.z = 0; 
     if (success && L) { pos.x = L.x; pos.y = L.y; pos.z = L.z; ph = 'IDLE'; fox.rotation.x = 0; ensure(); 
-     if (L.gift && !L.giftCollected) { L.giftCollected = true; const m = pm.get(L.idx); if (m) m.children.forEach(c => { if (c.userData && c.userData.gift) c.visible = false; }); openGiftUI(); } else if (want || held) { startCharge(); }
+     if (L.gift && !L.giftCollected) { L.giftCollected = true; const m = pm.get(L.idx); if (m) m.children.forEach(c => { if (c.userData && c.userData.gift) c.visible = false; }); openGiftUI(); } else if (!giantQ && (want || held)) { startCharge(); }
     } else if (res.landed && res.landed.idx === cur) { pos.x = res.landed.x; pos.z = res.landed.z; ph = 'IDLE'; fox.rotation.x = 0; if (want || held) startCharge(); } else { die(); } 
    } break;
   }
+  case 'STRIDE': stepGiant(dt, now); break;
   case 'BALLOON': {
    flightT += dt * 0.4; const p = Math.min(flightT, 1), ep = p < .5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
    pos.x = flightStart.x + (flightEnd.x - flightStart.x) * ep; pos.z = flightStart.z + (flightEnd.z - flightStart.z) * ep; pos.y = flightStart.y + (flightEnd.y - flightStart.y) * ep + Math.sin(ep * Math.PI) * 12;
@@ -903,7 +949,7 @@ function update(dt, now) {
   wf += (tf - wf) * (1 - Math.exp(-9 * dt)); const w = th + Math.sin(now * fq) * am, lag = Math.sin(now * fq - 1) * am * .5;
   wR.rotation.set(0, wf, w); wL.rotation.set(0, -wf, -w); tipR.rotation.z = lag; tipL.rotation.z = -lag;
  }
- if (fox && fox.userData && fox.userData.trex) trexAnimate(now);
+ if (fox && fox.userData && fox.userData.trex && ph !== 'STRIDE') trexAnimate(now);
  if (fox) { fox.position.set(pos.x, pos.y, pos.z); if (ph === 'IDLE' || ph === 'CHARGING' || ph === 'LANDING') fox.rotation.x = 0; }
 }
 
