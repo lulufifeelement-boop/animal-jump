@@ -763,14 +763,115 @@ function build() {
 function emit(x, y, z, n, col, spd, up, life = .7) { const P = partP; for (let k = 0; k < n; k++) { const i = P.i = (P.i + 1) % P.n, a = Math.random() * 6.28, s = Math.random() * spd; P.p.set([x, y, z], i * 3); P.v.set([Math.cos(a) * s, Math.random() * up, Math.sin(a) * s], i * 3); P.b.set(col, i * 3); P.l[i] = life * (.6 + Math.random() * .4); } }
 function partUpd(dt) { const P = partP; for (let i = 0; i < P.n; i++) { if (P.l[i] > 0) { P.l[i] -= dt; const k = Math.max(P.l[i], 0) / .7; for (let j = 0; j < 3; j++) { P.p[i * 3 + j] += P.v[i * 3 + j] * dt; P.c[i * 3 + j] = P.b[i * 3 + j] * Math.min(1, k); } P.v[i * 3 + 1] -= 5 * dt; } else { P.c[i * 3] = P.c[i * 3 + 1] = P.c[i * 3 + 2] = 0; } } P.g.attributes.position.needsUpdate = P.g.attributes.color.needsUpdate = true; }
 
-let GEOS = null;
+let PLAT_CACHE = null;
+function platTex(kind, base, seed) {
+ if (!PLAT_CACHE) PLAT_CACHE = { tex:{}, mat:{} };
+ const key = kind + ':' + base.toString(16);
+ if (PLAT_CACHE.tex[key]) return PLAT_CACHE.tex[key];
+ const cv = document.createElement('canvas'); cv.width = cv.height = 96;
+ const ctx = cv.getContext('2d'), rr = new RNG(hash(313, seed, base));
+ const b = '#' + base.toString(16).padStart(6, '0');
+ ctx.fillStyle = b; ctx.fillRect(0, 0, 96, 96);
+ if (kind === 'grass' || kind === 'moss') {
+  for (let i = 0; i < 260; i++) { const x = rr.next() * 96, y = rr.next() * 96, s = rr.rng(.5, 2.5); ctx.fillStyle = i % 3 ? 'rgba(255,255,255,.06)' : 'rgba(24,80,24,.12)'; ctx.fillRect(x, y, s, s * rr.rng(1, 2)); }
+  ctx.strokeStyle = 'rgba(255,255,220,.12)'; ctx.lineWidth = 1; for (let i = 0; i < 20; i++) { const x = rr.next() * 96, y = rr.next() * 96; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + rr.rng(-3, 3), y - rr.rng(2, 7)); ctx.stroke(); }
+ } else if (kind === 'stone' || kind === 'ancient') {
+  for (let i = 0; i < 80; i++) { const x = rr.next() * 96, y = rr.next() * 96; ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.12)'; ctx.fillRect(x, y, rr.rng(2, 9), rr.rng(1, 4)); }
+  ctx.strokeStyle = 'rgba(30,30,40,.26)'; ctx.lineWidth = 1.4;
+  for (let i = 0; i < 7; i++) { let x = rr.rng(5, 90), y = rr.rng(5, 90); ctx.beginPath(); ctx.moveTo(x, y); for (let j = 0; j < 4; j++) { x += rr.rng(-8, 8); y += rr.rng(4, 10); ctx.lineTo(x, y); } ctx.stroke(); }
+ } else if (kind === 'volcanic') {
+  for (let i = 0; i < 90; i++) { const x = rr.next() * 96, y = rr.next() * 96; ctx.fillStyle = i % 2 ? 'rgba(255,160,60,.05)' : 'rgba(0,0,0,.2)'; ctx.fillRect(x, y, rr.rng(2, 7), rr.rng(2, 5)); }
+  ctx.strokeStyle = 'rgba(255,110,20,.55)'; ctx.lineWidth = 1.5;
+  for (let i = 0; i < 5; i++) { let x = rr.rng(8, 88), y = rr.rng(8, 88); ctx.beginPath(); ctx.moveTo(x, y); for (let j = 0; j < 3; j++) { x += rr.rng(-10, 10); y += rr.rng(6, 12); ctx.lineTo(x, y); } ctx.stroke(); }
+ } else if (kind === 'crystal') {
+  for (let i = 0; i < 110; i++) { ctx.fillStyle = i % 2 ? 'rgba(140,220,255,.08)' : 'rgba(80,40,200,.10)'; ctx.fillRect(rr.next()*96, rr.next()*96, rr.rng(1,4), rr.rng(1,5)); }
+  ctx.strokeStyle = 'rgba(120,220,255,.28)'; ctx.lineWidth = 1; for (let i = 0; i < 8; i++) { ctx.beginPath(); ctx.moveTo(rr.rng(0,96), rr.rng(0,96)); ctx.lineTo(rr.rng(0,96), rr.rng(0,96)); ctx.stroke(); }
+ } else if (kind === 'ice') {
+  for (let i = 0; i < 110; i++) { ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.16)' : 'rgba(80,160,255,.10)'; ctx.fillRect(rr.next()*96, rr.next()*96, rr.rng(2,7), rr.rng(1,4)); }
+ }
+ const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1.8, 1.8); t.encoding = THREE.sRGBEncoding;
+ return PLAT_CACHE.tex[key] = t;
+}
+function platMat(key, color, kind, rough=.85, emissive=0, ei=0) {
+ if (!PLAT_CACHE) PLAT_CACHE = { tex:{}, mat:{} };
+ const mk = key + ':' + color.toString(16) + ':' + kind + ':' + emissive;
+ if (PLAT_CACHE.mat[mk]) return PLAT_CACHE.mat[mk];
+ const m = new THREE.MeshStandardMaterial({ map: platTex(kind, color, key.length * 17 + color), roughness: rough, metalness: kind === 'crystal' || kind === 'ice' ? .08 : 0, emissive, emissiveIntensity: ei });
+ return PLAT_CACHE.mat[mk] = m;
+}
 function platMesh(p) {
- if (!GEOS) { GEOS = { 0: { t: new THREE.CylinderGeometry(1, 1, .1, 28), s: new THREE.CylinderGeometry(1, .93, .5, 28), c: new THREE.ConeGeometry(.92, 1.8, 8) }, 1: { t: new THREE.BoxGeometry(1.8, .1, 1.8), s: new THREE.BoxGeometry(1.8, .5, 1.7), c: new THREE.ConeGeometry(1.2, 1.8, 4) }, 2: { t: new THREE.CylinderGeometry(1, 1, .1, 6), s: new THREE.CylinderGeometry(1, .93, .5, 6), c: new THREE.ConeGeometry(.92, 1.8, 6) } }; }
- const th = Math.min(TH.length - 1, Math.floor(p.idx / 15) % TH.length), tm = tMats[th]; const g = new THREE.Group(), r = p.r, rr = new RNG(hash(77, p.idx)), sh = GEOS[p.sh] || GEOS[0];
- const t = new THREE.Mesh(sh.t, tm.e); t.scale.set(r * .99, 1, r * .99); t.position.y = -.05; t.receiveShadow = true; const s = new THREE.Mesh(sh.s, tm.s); s.scale.set(r, 1, r); s.position.y = -.35; s.castShadow = s.receiveShadow = true; const k = new THREE.Mesh(sh.c, tm.st); k.scale.set(r, r, r); k.rotation.set(Math.PI, p.sh === 1 ? Math.PI/4 : rr.rng(0, 3), 0); k.position.y = -.6 - .9 * r; k.castShadow = true; g.add(t, s, k);
- for (let i = 0; i < Math.round(r * 3); i++) { const a = rr.rng(0, 6.28), d = r * rr.rng(.55, .92), f = new THREE.Mesh(new THREE.SphereGeometry(rr.rng(.05, .1), 6, 5), M([0xffd24a, 0xff7aa8, 0xffffff][i % 3], .6)); if (p.sh === 1) f.position.set(Math.cos(a)*d*.8, .05, Math.sin(a)*d*.8); else f.position.set(Math.cos(a)*d, .05, Math.sin(a)*d); g.add(f); }
- if (r > 1.3 && rr.next() < .7) { const a = rr.rng(0, 6.28), tr = new THREE.Group(), tk = new THREE.Mesh(new THREE.CylinderGeometry(.07, .1, .5, 6), tm.s), lf = new THREE.Mesh(new THREE.SphereGeometry(.38, 10, 8), tm.e); lf.position.y = .55; tk.position.y = .25; lf.castShadow = true; tr.add(tk, lf); tr.position.set(Math.cos(a) * r * .78, 0, Math.sin(a) * r * .78); g.add(tr); }
+ const th = Math.min(TH.length - 1, Math.floor(p.idx / 15) % TH.length);
+ const g = new THREE.Group(), r = p.r, rr = new RNG(hash(77, p.idx));
+ const style = th, shape = p.sh;
+ const C = [
+  {top:0x79c951, dirt:0xa76b3d, rock:0x7f8790},
+  {top:0xe4ba6b, dirt:0x9a6845, rock:0x887b76},
+  {top:0x4a5c88, dirt:0x39445a, rock:0x56647c},
+  {top:0x4e934d, dirt:0x5b5348, rock:0x5f6668},
+  {top:0x7bcf7d, dirt:0x78608e, rock:0x74648d}
+ ][style];
+ const geomTop = shape === 1
+   ? new THREE.BoxGeometry(1.8, .14, 1.8)
+   : new THREE.CylinderGeometry(1, 1, .14, style === 1 ? 8 : style === 2 ? 6 : 20);
+ const geomBand = shape === 1
+   ? new THREE.BoxGeometry(1.7, .44, 1.7)
+   : new THREE.CylinderGeometry(1, .93, .44, style === 1 ? 8 : style === 2 ? 6 : 20);
+ const t = new THREE.Mesh(geomTop, platMat('t'+style, C.top, style===3?'moss':style===2?'crystal':style===1?'stone':'grass', .78));
+ t.scale.set(r * .98, 1, r * .98); t.position.y = -.03; t.receiveShadow = true;
+ const band = new THREE.Mesh(geomBand, platMat('b'+style, C.dirt, style===1?'stone':style===3?'moss':'stone', .94));
+ band.scale.set(r, 1, r); band.position.y = -.32; band.castShadow = band.receiveShadow = true;
+ g.add(t, band);
+
+ const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+ const rockMat = new THREE.MeshStandardMaterial({ color:C.rock, roughness:.96, flatShading:true });
+ const shardGeo = new THREE.ConeGeometry(1, 1.6, style === 2 || style === 4 ? 6 : 5);
+ const pebbleGeo = new THREE.IcosahedronGeometry(1, 0);
+ const addRock = (a, d, s, y=-.72) => {
+   const q = new THREE.Mesh(rockGeo, rockMat); q.scale.set(s * rr.rng(.8,1.15), s * rr.rng(.7,1.25), s * rr.rng(.8,1.1));
+   q.position.set(Math.cos(a)*d, y - s*.18, Math.sin(a)*d); q.rotation.set(rr.rng(0,3),rr.rng(0,3),rr.rng(0,3)); q.castShadow = true; g.add(q);
+ };
+ for (let i=0;i<3;i++) { const a=rr.rng(0,6.28), d=r*rr.rng(.42,.82); addRock(a,d,r*rr.rng(.12,.22),-.72); }
+
+ const rim = new THREE.Mesh(new THREE.TorusGeometry(r*.93, Math.max(.035,r*.035), 6, shape===1?20:28), platMat('rim'+style, style===4?0xb9f2ad:0x9adf70, style===4?'grass':'grass', .76));
+ rim.rotation.x = Math.PI/2; rim.position.y = .045; rim.scale.set(shape===1?1:.99,1,1); rim.receiveShadow = true; g.add(rim);
+
+ const anim = [];
+ if (style === 0) {
+   const blade = new THREE.ConeGeometry(r*.035, r*.18, 4);
+   for (let i=0;i<Math.max(5,Math.round(r*6));i++) {
+     const a=rr.rng(0,6.28), d=r*rr.rng(.45,.9), b=new THREE.Mesh(blade,platMat('grassblade',0x5fae3d,'grass',.9)); b.position.set(Math.cos(a)*d,.1,Math.sin(a)*d); b.rotation.z=rr.rng(-.35,.35); b.rotation.y=rr.rng(0,6.28); g.add(b);
+   }
+   for(let i=0;i<2;i++){
+     const a=rr.rng(0,6.28), d=r*rr.rng(.25,.7), st=new THREE.Mesh(new THREE.CylinderGeometry(r*.012,r*.018,r*.16,5),platMat('stem',0x3f8e3a,'grass',.95));
+     st.position.set(Math.cos(a)*d,.12,Math.sin(a)*d); g.add(st);
+     const fl=new THREE.Mesh(new THREE.SphereGeometry(r*.07,8,6),platMat('flower'+i,[0xffd85c,0xff8bd0][i],'grass',.7)); fl.scale.set(1,.55,1); fl.position.set(st.position.x,.23,st.position.z); fl.castShadow=true; g.add(fl);
+   }
+ } else if (style === 1) {
+   const dry = platMat('dry',0xd7c66a,'stone',.92);
+   for(let i=0;i<3;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.4,.82), stem=new THREE.Mesh(new THREE.ConeGeometry(r*.018,r*.18,4),dry); stem.position.set(Math.cos(a)*d,.13,Math.sin(a)*d); stem.rotation.z=rr.rng(-.4,.4); g.add(stem); }
+   for(let i=0;i<3;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.25,.78), pm=new THREE.Mesh(pebbleGeo,platMat('goldpebble',0xf0c14b,'stone',.7)); pm.scale.setScalar(r*rr.rng(.06,.11)); pm.position.set(Math.cos(a)*d,.1,Math.sin(a)*d); pm.castShadow=true; g.add(pm); }
+ } else if (style === 2) {
+   const cm = platMat('crystal',0x5bd8ff,'crystal',.3,0x1b7cff,.9);
+   for(let i=0;i<2;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.3,.68), cr=new THREE.Mesh(shardGeo,cm); cr.scale.set(r*rr.rng(.12,.18),r*rr.rng(.45,.8),r*rr.rng(.12,.18)); cr.position.set(Math.cos(a)*d,.18,Math.sin(a)*d); cr.rotation.set(rr.rng(-.18,.18),rr.rng(0,6.28),rr.rng(-.12,.12)); cr.castShadow=true; g.add(cr); anim.push({o:cr,y:cr.position.y,s:rr.rng(0,6.28),amp:.05,spin:.45}); }
+   const ring=new THREE.Mesh(new THREE.TorusGeometry(r*.48,r*.025,6,24),platMat('moonring',0x8ab8ff,'crystal',.45,0x397dff,.65)); ring.rotation.x=Math.PI/2; ring.position.y=.095; g.add(ring); anim.push({o:ring,y:ring.position.y,s:rr.rng(0,6.28),spin:.25,rot:1});
+ } else if (style === 3) {
+   const moss = platMat('moss',0x70b64c,'moss',.92);
+   for(let i=0;i<4;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.55,.92), leaf=new THREE.Mesh(new THREE.SphereGeometry(r*.11,8,6),moss); leaf.scale.set(1.3,.45,.8); leaf.position.set(Math.cos(a)*d,.06,Math.sin(a)*d); leaf.rotation.y=a; g.add(leaf); }
+   for(let i=0;i<2;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.25,.7), st=new THREE.Mesh(new THREE.CylinderGeometry(r*.045,r*.05,r*.13,7),platMat('mushstem',0xe7d7b4,'stone',.9)); st.position.set(Math.cos(a)*d,.08,Math.sin(a)*d); const cap=new THREE.Mesh(new THREE.SphereGeometry(r*.11,8,6),platMat('mushcap',i?0xf06a4f:0xc95765,'stone',.8)); cap.scale.set(1,.55,1); cap.position.set(st.position.x,.19,st.position.z); g.add(st,cap); }
+ } else {
+   const cm = platMat('magic',0x8f75ff,'crystal',.28,0x6a35ff,1.1);
+   for(let i=0;i<3;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.35,.78), cr=new THREE.Mesh(shardGeo,cm); cr.scale.set(r*rr.rng(.09,.15),r*rr.rng(.35,.65),r*rr.rng(.09,.15)); cr.position.set(Math.cos(a)*d,.16,Math.sin(a)*d); cr.rotation.set(rr.rng(-.2,.2),rr.rng(0,6.28),rr.rng(-.2,.2)); g.add(cr); anim.push({o:cr,y:cr.position.y,s:rr.rng(0,6.28),amp:.07,spin:.35}); }
+   const rune=new THREE.Mesh(new THREE.TorusGeometry(r*.36,r*.03,6,28),platMat('rune',0x7df5ff,'crystal',.3,0x33ddff,1.2)); rune.rotation.x=Math.PI/2; rune.position.y=.105; g.add(rune); anim.push({o:rune,y:rune.position.y,s:0,rot:.9});
+   for(let i=0;i<4;i++){ const a=i*Math.PI/2+.4, dot=new THREE.Mesh(new THREE.OctahedronGeometry(r*.055,0),platMat('runeDot',0xd9ffff,'crystal',.18,0x9effff,1.5)); dot.position.set(Math.cos(a)*r*.45,.13,Math.sin(a)*r*.45); g.add(dot); anim.push({o:dot,y:dot.position.y,s:i,amp:.025,spin:.7}); }
+ }
+ const underN = style===4 ? 5 : 4;
+ for(let i=0;i<underN;i++){ const a=rr.rng(0,6.28), d=r*rr.rng(.15,.75), q=new THREE.Mesh(new THREE.ConeGeometry(r*rr.rng(.11,.18),r*rr.rng(.55,.95),5),rockMat); q.position.set(Math.cos(a)*d,-.72-r*rrng(.15,.28),Math.sin(a)*d); q.rotation.z=rr.rng(-.35,.35); q.rotation.y=rr.rng(0,6.28); q.castShadow=true; g.add(q); }
+ if (style===0 || style===3) {
+   const vineMat=platMat('vine',0x3d8f45,'moss',.95);
+   for(let i=0;i<2;i++){ const a=rr.rng(0,6.28), d=r*rrng(.35,.75), vine=new THREE.Mesh(new THREE.CylinderGeometry(r*.018,r*.028,r*rrng(.35,.7),5),vineMat); vine.position.set(Math.cos(a)*d,-.85-Math.abs(Math.sin(a))*r*.25,Math.sin(a)*d); vine.rotation.z=rr.rng(-.35,.35); g.add(vine); }
+ }
  if (p.gift) { const gg = new THREE.Group(), bm = M(0xff3344, 0.5), bx = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), bm); bx.position.y = 0.4; bx.castShadow = true; const rm = M(0xffdd33, 0.3), rb1 = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.2), rm); rb1.position.y = 0.4; const rb2 = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.82, 0.82), rm); rb2.position.y = 0.4; const bow = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.08, 8, 16), rm); bow.position.y = 0.8; bow.rotation.x = 1.57; gg.add(bx, rb1, rb2, bow); gg.position.set(0, 0, 0); gg.userData.gift = true; g.add(gg); }
+ g.userData.pAnim = anim;
  g.position.set(p.x, p.y, p.z); return g;
 }
 
@@ -943,7 +1044,15 @@ function update(dt, now) {
  const A = plats[cur], Tl = plats[cur + 1], d = dirOf(A, Tl), yt = Math.atan2(d.x, d.z);
  if (ph !== 'AIR' && ph !== 'FALLING' && ph !== 'DEAD' && ph !== 'BALLOON' && ph !== 'GLIDE' && ph !== 'STRIDE' && fox) fox.rotation.y += ang(fox.rotation.y, yt) * (1 - Math.exp(-9 * dt));
  const bs = body.scale; let tp = 1.2 * now / 1000;
- for (const [i, m] of pm) { m.children.forEach(c => { if (c.userData && c.userData.gift) c.rotation.y += dt * 1.5; }); }
+ for (const [i, m] of pm) {
+  m.children.forEach(c => { if (c.userData && c.userData.gift) c.rotation.y += dt * 1.5; });
+  if (m.userData && m.userData.pAnim) m.userData.pAnim.forEach(a => {
+    const u = a.o, q = Math.sin(now * .002 + a.s);
+    if (a.amp) u.position.y = a.y + q * a.amp;
+    if (a.spin) u.rotation.y += dt * a.spin;
+    if (a.rot) u.rotation.z += dt * a.rot;
+  });
+}
  
  switch (ph) {
   case 'IDLE': bs.set(1, 1 + .02 * Math.sin(tp * 2), 1); body.rotation.x = 0; tail.rotation.y = .25 * Math.sin(tp * 2); if (giantQ && AB_on('dino') && fox.userData.legs) { giantQ = false; startGiant(); break; } if (want || (held && app === 'PLAY')) startCharge(); break;
