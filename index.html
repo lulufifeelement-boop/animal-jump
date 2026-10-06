@@ -151,7 +151,7 @@ const LANG = {
   share:"SHARE RESULT", menu:"MENU", pau:"PAUSED", res:"RESUME", gift:"GIFT FOUND!", cont:"CONTINUE", back:"BACK",
   ent_name:"ENTER YOUR NAME", name_desc:"Join the global leaderboard!", save_btn:"SAVE & PLAY", g_top:"GLOBAL TOP", no_rec:"No records yet",
   vib_on:"VIBRATION: ON", vib_off:"VIBRATION: OFF", snd_on:"SOUND: ON", snd_off:"SOUND: OFF", dbg_on:"DEBUG: ON", dbg_off:"DEBUG: OFF",
-  best:"Best height: ", unlck:"Unlocked", sel:"SELECT", seled:"SELECTED", buy:"BUY", info:"INFO", upg:"UPGRADE L", maxl:"LEVEL 3 MAX",
+  best:"Best distance: ", unlck:"Unlocked", sel:"SELECT", seled:"SELECTED", buy:"BUY", info:"INFO", upg:"UPGRADE L", maxl:"LEVEL 3 MAX",
   tr:"This run", ce:"Coins earned", gh:"Ghost (this level)", db:"Daily best", pb:"personal best", hud_p:"Platforms", hud_c:"Coins", hud_b:"Best",
   m_perf:"PERFECT", m_sav:"SAVED!", m_lj:"LONG JUMP!", m_miss:"MISS", m_try:"TRY AGAIN", m_cp:"CHECKPOINT", m_all:"ALL ANIMALS UNLOCKED!", m_inv:"INVALID CODE",
   g_fly:"🎈 SUPER FLIGHT!", g_coin:"💰 +$ COINS!", g_x2:"🪙 2X COINS ($ JUMPS)!", g_life:"❤ +1 LIFE!", g_ani:"🐾❓ $! (until you fall)",
@@ -175,7 +175,7 @@ const LANG = {
   share:"ПОДЕЛИТЬСЯ", menu:"МЕНЮ", pau:"ПАУЗА", res:"ПРОДОЛЖИТЬ", gift:"ПОДАРОК!", cont:"ДАЛЕЕ", back:"НАЗАД",
   ent_name:"ВВЕДИТЕ ИМЯ", name_desc:"Присоединяйтесь к мировому топу!", save_btn:"ИГРАТЬ", g_top:"РЕЙТИНГ ЛУЧШИХ", no_rec:"Пока нет рекордов",
   vib_on:"ВИБРАЦИЯ: ВКЛ", vib_off:"ВИБРАЦИЯ: ВЫКЛ", snd_on:"ЗВУК: ВКЛ", snd_off:"ЗВУК: ВЫКЛ", dbg_on:"ОТЛАДКА: ВКЛ", dbg_off:"ОТЛАДКА: ВЫКЛ",
-  best:"Лучшая высота: ", unlck:"Открыто", sel:"ВЫБРАТЬ", seled:"ВЫБРАН", buy:"КУПИТЬ", info:"ИНФО", upg:"УЛУЧШИТЬ L", maxl:"МАКС. УРОВЕНЬ",
+  best:"Лучшая дистанция: ", unlck:"Открыто", sel:"ВЫБРАТЬ", seled:"ВЫБРАН", buy:"КУПИТЬ", info:"ИНФО", upg:"УЛУЧШИТЬ L", maxl:"МАКС. УРОВЕНЬ",
   tr:"Этот забег", ce:"Заработано монет", gh:"Призрак (уровень)", db:"Рекорд дня", pb:"личный рекорд", hud_p:"Платформы", hud_c:"Монеты", hud_b:"Лучший",
   m_perf:"ИДЕАЛЬНО", m_sav:"СПАСЁН!", m_lj:"СУПЕР ПРЫЖОК!", m_miss:"ПРОМАХ", m_try:"ЕЩЁ РАЗ", m_cp:"ЧЕКПОИНТ", m_all:"ВСЕ ЖИВОТНЫЕ ОТКРЫТЫ!", m_inv:"НЕВЕРНЫЙ КОД",
   g_fly:"🎈 СУПЕР ПОЛЁТ!", g_coin:"💰 +$ МОНЕТ!", g_x2:"🪙 2X МОНЕТ ($ ПРЫЖКОВ)!", g_life:"❤ +1 ЖИЗНЬ!", g_ani:"🐾❓ $! (до падения)",
@@ -186,7 +186,7 @@ const LANG = {
   ab_pig:"Монетка", ab_pig_u1:"Монеты x3", ab_pig_u2:"Монеты x4", ab_pig_u3:"Монеты x5",
   ab_capybara:"Спокойствие", ab_capybara_u1:"Приземление на край не сбивает комбо", ab_capybara_u2:"…и даёт +1 монету", ab_capybara_u3:"…и считается идеальным",
   ab_panda:"Сильные лапы", ab_panda_u1:"+10% к силе прыжка", ab_panda_u2:"+15% к силе прыжка", ab_panda_u3:"+20% к силе прыжка",
-  ab_dino:"Топот", ab_dino_u1:"Потеряв жизнь, 3 идеальных её вернут", ab_dino_u2:"2 идеальных вернут", ab_dino_u3:"2 идеальных, запас до 2 жизней",
+  ab_dino:"Топот", ab_dino_u1:"После 3 идеальных (не обязательно подряд): вырастает в гиганта и переступает 4 платформы", ab_dino_u2:"Переступает 5 платформ", ab_dino_u3:"Достаточно 2 идеальных, 6 платформ",
   ab_cat:"Когти", ab_cat_u1:"Хват за край до 1.2м (1/8 пл)", ab_cat_u2:"Радиус 1.8м, заряд/6 пл", ab_cat_u3:"Радиус 2.5м, заряд/4, 3 заряда",
   ab_bear:"Крепкий", ab_bear_u1:"6 жизней, +1 каждые 20 пл", ab_bear_u2:"6 жизней, +1 каждые 15 пл", ab_bear_u3:"6 жизней, +1 каждые 10 пл",
   goose:"Гусь", ab_goose:"Крылья", ab_goose_u1:"При падении взлетает на 3 платформы вперёд (откат 10 пл)", ab_goose_u2:"4 платформы, откат 9 пл", ab_goose_u3:"5 платформ, откат 8 пл", goose_msg:"ЛЕТИМ!",
@@ -250,6 +250,7 @@ async function initCloud() {
         // Do not replace an active run with late cloud data.
         if (snap.exists() && app === 'MENU') {
             Object.assign(save, snap.data());
+            migrateMeters();
             updateTexts();
         }
 
@@ -527,6 +528,14 @@ function startGoose() {
  msg(T('goose_msg'), 1200); AU.blip(500, .3, 'triangle', .12, 900); cs.shake = .1; vib(30); abHud();
 }
 
+/* Meters = distance travelled along the path: it grows with every platform. */
+function mOf(i) { const p = plats[i]; if (!p) return 0; if (p.m === undefined) p.m = i === 0 ? 0 : mOf(i - 1) + Math.round(Math.hypot(p.x - plats[i - 1].x, p.z - plats[i - 1].z)); return p.m; }
+function migrateMeters() {
+ if (save.mv !== 2) { save.mv = 2; save.ghosts = {}; save.top = []; save.daily = { d: 0, h: 0 }; if (save.q && save.q.p) save.q.p.height = 0; persist(); }
+ if (save.bestMetric !== 2) { save.best = Array.isArray(save.top) && save.top.length ? Math.max(...save.top) : 0; save.bestMetric = 2; persist(); }
+}
+migrateMeters();
+
 let run = null, runT = 0, nextSeed = 0, urlSeed = +new URLSearchParams(location.search).get('seed') || 0, gh = null, gs = null, gk = 0, gcur = 0, gMesh = null, ghLabel = '';
 const todaySeed = () => { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); };
 const dayIdx = () => { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5); };
@@ -652,19 +661,27 @@ function buildTRex() {
 }
 function buildGoose() {
  if (fox) scene.remove(fox); fox = new THREE.Group(); body = new THREE.Group(); fox.add(body);
- const wh = TM(0xffffff, 'feathers'), gy = TM(0xdfe3e8, 'feathers'), org = M(0xffa51f, .35), dk = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: .06, metalness: .15 }), hl = new THREE.MeshBasicMaterial({ color: 0xffffff }), tipM = TM(0x7d8794, 'feathers');
- body.add(sph(.55, wh, 0, .68, -.05, .9, .85, 1.4), sph(.42, gy, 0, .5, .3, .8, .7, .8));
- [[1.05, .5, .19], [1.4, .62, .16], [1.72, .6, .145], [1.98, .55, .135]].forEach(([y, z, r]) => body.add(sph(r, wh, 0, y, z, 1, 1.5, 1)));
- head = new THREE.Group(); head.position.set(0, 2.15, .6); head.add(sph(.22, wh, 0, 0, 0, 1, .95, 1.15), sph(.05, org, 0, .16, .24, 1, .8, 1.4));
- const bk = new THREE.Mesh(new THREE.ConeGeometry(.1, .34, 10), org); bk.rotation.x = Math.PI / 2; bk.position.set(0, -.03, .34); bk.scale.set(1.3, 1, .7); head.add(bk);
+ const wh = TM(0xffffff, 'feathers'), gy = TM(0xe3e6ea, 'feathers'), tipM = M(0x8a94a1, 'feathers');
+ const bill = M(0xff8a1c, .38), bill2 = M(0xe9740f, .4), nail = M(0xfff1d0, .35), leg = M(0xff9a3c, .45);
+ const ey = new THREE.MeshStandardMaterial({ color: 0x1a110c, roughness: .06, metalness: .15 }), hl = new THREE.MeshBasicMaterial({ color: 0xffffff });
+ body.add(sph(.55, wh, 0, .74, -.05, .9, .8, 1.35), sph(.4, wh, 0, .8, .4, .85, .95, .9), sph(.42, gy, 0, .55, .05, .8, .6, 1.15), sph(.3, wh, 0, .8, -.62, .85, .85, 1));
+ [[1.02, .44, .23], [1.22, .55, .2], [1.42, .62, .178], [1.62, .62, .16], [1.82, .58, .15], [1.98, .56, .14]].forEach(([y, z, r]) => body.add(sph(r, wh, 0, y, z, 1, 1.35, 1)));
+ head = new THREE.Group(); head.position.set(0, 2.1, .58);
+ head.add(sph(.2, wh, 0, 0, 0, .92, .95, 1.18), sph(.15, wh, 0, .03, .13, .85, .9, 1));
+ const up = new THREE.Mesh(new THREE.ConeGeometry(.105, .36, 14), bill); up.rotation.x = Math.PI / 2 + .1; up.position.set(0, -.015, .34); up.scale.set(.95, 1, 1.08); up.castShadow = true;
+ const lo = new THREE.Mesh(new THREE.ConeGeometry(.075, .28, 12), bill2); lo.rotation.x = Math.PI / 2 + .05; lo.position.set(0, -.088, .3); lo.scale.set(.9, 1, .7);
+ head.add(up, lo, sph(.028, nail, 0, -.034, .515, 1, .8, 1.1));
  for (const s of [-1, 1]) {
-  head.add(sph(.045, dk, s * .17, .06, .12), sph(.016, hl, s * .18, .09, .16));
-  const lg = new THREE.Mesh(new THREE.CylinderGeometry(.04, .05, .3, 6), org); lg.position.set(s * .2, .18, .1); body.add(lg, sph(.1, org, s * .2, .03, .2, 1.1, .25, 1.6));
-  const w = new THREE.Group(); w.position.set(s * .42, .98, -.05); w.add(sph(.3, wh, s * .38, 0, -.05, 1.5, .22, 1.2));
+  head.add(sph(.04, ey, s * .155, .055, .1, .6, 1, 1), sph(.012, hl, s * .165, .075, .12), sph(.011, ey, s * .045, .02, .31));
+  const shank = new THREE.Mesh(new THREE.CylinderGeometry(.032, .042, .36, 8), leg); shank.position.set(s * .22, .2, .12); shank.castShadow = true;
+  const foot = new THREE.Mesh(new THREE.CylinderGeometry(.17, .17, .035, 3), leg); foot.position.set(s * .22, .02, .2); foot.scale.set(.9, 1, 1.3);
+  body.add(sph(.2, wh, s * .28, .42, .08, .8, 1.1, 1), shank, foot);
+  const w = new THREE.Group(); w.position.set(s * .44, 1.0, -.02); w.add(sph(.3, wh, s * .38, 0, -.05, 1.5, .22, 1.2));
   const tp = new THREE.Group(); tp.position.set(s * .78, 0, -.05); tp.add(sph(.2, tipM, s * .22, 0, -.08, 1.7, .16, .8), sph(.16, wh, s * .2, 0, .12, 1.5, .14, .7)); w.add(tp); body.add(w);
   if (s < 0) { wL = w; tipL = tp; } else { wR = w; tipR = tp; }
  }
- tail = new THREE.Group(); tail.position.set(0, .7, -.7); tail.add(sph(.14, wh, 0, .05, -.1, .9, .5, 1.6), sph(.1, gy, -.1, .05, -.1, .6, .4, 1.5), sph(.1, gy, .1, .05, -.1, .6, .4, 1.5));
+ tail = new THREE.Group(); tail.position.set(0, .82, -.78);
+ for (const i of [-1, 0, 1]) { const f = new THREE.Mesh(new THREE.ConeGeometry(.07, .42, 6), wh); f.rotation.set(-1.32, 0, i * .25); f.position.set(i * .05, .03, -.2); tail.add(f); }
  body.add(head, tail); scene.add(fox); if (typeof pos !== 'undefined' && pos) fox.position.set(pos.x, pos.y, pos.z);
 }
 function buildAnimal(type) {
@@ -701,7 +718,7 @@ function buildAnimal(type) {
  body.add(tail); shadeModel(fox); scene.add(fox); if (typeof pos !== 'undefined' && pos) fox.position.set(pos.x, pos.y, pos.z);
 }
 
-const QM = { perf: [8, 12, 20], plat: [25, 40, 60], combo: [3, 4, 5], coins: [60, 100, 150], edge: [2, 3, 5], long: [2, 3, 4], height: [60, 100, 150], gift: [1, 2, 2] }, QR = [40, 70, 110];
+const QM = { perf: [8, 12, 20], plat: [25, 40, 60], combo: [3, 4, 5], coins: [60, 100, 150], edge: [2, 3, 5], long: [2, 3, 4], height: [150, 250, 400], gift: [1, 2, 2] }, QR = [40, 70, 110];
 function quests() { const r = new RNG(hash(todaySeed(), 77)), ks = Object.keys(QM), out = []; for (let i = 0; i < 3; i++) { const k = ks.splice(Math.floor(r.next() * ks.length), 1)[0], tier = Math.floor(r.next() * 3); out.push({ m: k, t: QM[k][tier], r: QR[tier] }); } return out; }
 function qInit() { if (save.q.d !== todaySeed()) save.q = { d: todaySeed(), p: {}, done: [0, 0, 0] }; }
 function renderQ() { const e = $('qbox'); if (!e) return; qInit(); e.innerHTML = '<b style="font-size:14px">📋 ' + T('q_title') + '</b>' + quests().map((q, i) => { const v = Math.min(q.t, save.q.p[q.m] || 0), d = save.q.done[i]; return `<div style="display:flex;justify-content:space-between;gap:14px;font-size:12px;opacity:${d ? .55 : 1}"><span>${d ? '✅' : '▫️'} ${T('q_' + q.m).replace('$', q.t)}</span><span>${v}/${q.t} · 🪙${q.r}</span></div>`; }).join(''); }
@@ -786,7 +803,7 @@ function respawn() { endTmp();
 
 let lh = '';
 function hud() { 
-  abHud(); const h = Math.max(0, Math.round(plats[maxIdx].y * 10)), t = h + ''; if (t !== lh) { $('ht').textContent = t + 'm'; lh = t; } 
+  abHud(); const h = mOf(maxIdx), t = h + ''; if (t !== lh) { $('ht').textContent = t + 'm'; lh = t; } 
   $('hs').textContent = `${T('hud_b')} ${save.best}m  ·  ${T('hud_p')} ${maxIdx}  ·  🪙 ${save.coins}` + (combo > 1 ? `  ·  ${T('m_perf')} x${combo}` : '') + (doubleCoins > 0 ? ` (🪙x2: ${doubleCoins})` : ''); 
 }
 const hint = t => { if (jumps < 3 && ph !== 'AIR') msg(t, 500); };
@@ -801,7 +818,7 @@ function release() {
 function onLand() {
  const L = res.landed; ph = 'LANDING'; lt = 0; landZ = res.zone; pos.x = res.x; pos.y = res.claw ? res.cy : L.y; pos.z = res.z; const success = res.out === 'SUCCESS';
  if (success) {
-  const skipped = L.idx > cur + 1; if (L.idx > cur) cur = L.idx; ensure(); if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (Math.round(L.y * 10) > save.best) save.best = Math.round(L.y * 10); }
+  const skipped = L.idx > cur + 1; if (L.idx > cur) cur = L.idx; ensure(); if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (mOf(L.idx) > save.best) save.best = mOf(L.idx); }
   let earned = 1;
   if (res.zone === 'PERFECT') {
    combo++; perfects++; qAdd('perf'); dinoC++; if (AB_on('dino') && dinoC >= [3, 3, 2][lv() - 1]) { dinoC = 0; giantQ = true; } earned = 1 + Math.min(combo, 5);
@@ -813,7 +830,7 @@ function onLand() {
   if (AB_on('pig')) earned *= [3, 4, 5][lv() - 1]; if (doubleCoins > 0) { earned *= 2; doubleCoins--; } if (AB_on('bunny')) { cFrac += earned * [.25, .35, .5][lv() - 1] + (res.zone === 'EDGE' ? (lv() === 3 ? 2 : 1) : 0); const bn = Math.floor(cFrac); cFrac -= bn; earned += bn; } if (AB_on('capybara') && res.zone === 'EDGE' && lv() >= 2) earned += 1; save.coins += earned; run.coins += earned; qAdd('coins', earned);
   if (maxIdx >= lastCp + G.gen.cp) { lastCp = maxIdx; AU.cp(); msg(T('m_cp'), 1200); }
   { const m10 = Math.floor(maxIdx / [8, 6, 4][lv() - 1]), m20 = Math.floor(maxIdx / [20, 15, 10][lv() - 1]), mc = lv() === 3 ? 3 : 2; if (m10 > abM10) { abM10 = m10; if (clawCh < mc) clawCh++; abHud(); } if (m20 > abM20) { abM20 = m20; if (AB_on('bear') && lives < 6) { lives++; updHearts(); msg('+❤️', 900); } } }
-  qMax('height', Math.round(L.y * 10)); qMax('combo', combo); if (res.zone === 'EDGE') qAdd('edge'); if (skipped) qAdd('long'); persist(); AU.land(res.zone); vib(res.zone === 'PERFECT' ? [20, 30, 20] : 25); cs.shake = res.zone === 'PERFECT' ? .35 : .22; emit(pos.x, pos.y + .1, pos.z, res.zone === 'PERFECT' ? 50 : 24, res.zone === 'PERFECT' ? [1, .9, .4] : [.8, .75, .6], res.zone === 'PERFECT' ? 4 : 2.4, 2);
+  qMax('height', mOf(L.idx)); qMax('combo', combo); if (res.zone === 'EDGE') qAdd('edge'); if (skipped) qAdd('long'); persist(); AU.land(res.zone); vib(res.zone === 'PERFECT' ? [20, 30, 20] : 25); cs.shake = res.zone === 'PERFECT' ? .35 : .22; emit(pos.x, pos.y + .1, pos.z, res.zone === 'PERFECT' ? 50 : 24, res.zone === 'PERFECT' ? [1, .9, .4] : [.8, .75, .6], res.zone === 'PERFECT' ? 4 : 2.4, 2);
  } else {
   combo = 0; msg(L.idx === cur ? T('m_try') : T('m_miss'), 700); AU.blip(180, .22, 'sawtooth', .12, 70); vib(25); cs.shake = .18; emit(pos.x, pos.y + .1, pos.z, 20, [.85, .7, .55], 2.2, 1.6);
  }
@@ -825,8 +842,8 @@ function die() { ph = 'DEAD'; dtm = 0; AU.fall(); vib(60); $('fade').style.opaci
 function gameOver() {
  app = 'GAMEOVER'; ph = 'IDLE'; paused = false; cancelCharge(); respawn(); 
  $('hud').style.display = 'none'; $('pz').style.display = 'none'; show('pause', 0);
- $('godist').textContent = Math.round(plats[maxIdx].y * 10) + ' m';
- const h = Math.round(plats[maxIdx].y * 10), prev = save.ghosts[seed], l = $('golist'); l.innerHTML = '';
+ $('godist').textContent = mOf(maxIdx) + ' m';
+ const h = mOf(maxIdx), prev = save.ghosts[seed], l = $('golist'); l.innerHTML = '';
  const row = (a, b, me) => { const r = document.createElement('div'); r.className = 'lb-row' + (me ? ' me' : ''); r.innerHTML = `<span>${a}</span><span>${b}</span>`; l.appendChild(r); };
  saveRun(h); 
  row(T('tr'), h + 'm', 1); row('🪙 ' + T('ce'), '+' + run.coins); if (prev) row('👻 ' + T('gh'), prev.h + 'm'); if (seed === todaySeed()) row('📅 ' + T('db'), save.daily.h + 'm');
@@ -852,7 +869,7 @@ function setPause(p) { if (app !== 'PLAY' || paused === p || ph === 'DEAD') retu
 function show(id, on) { $(id).classList.toggle('h', !on); }
 
 function toMenu() { renderQ();
- if (run && !run.saved && maxIdx > 0) saveRun(Math.round(plats[maxIdx].y * 10));
+ if (run && !run.saved && maxIdx > 0) saveRun(mOf(maxIdx));
  $('dly').textContent = (save.daily.d === todaySeed() ? '📅 Today: ' + save.daily.h + ' m' : '📅 New level today') + (save.sk.n && save.sk.d >= dayIdx() - 1 ? '  🔥 ' + save.sk.n + '-day streak' : '');
  app = 'MENU'; paused = false; cancelCharge(); $('hud').style.display = 'none'; $('pz').style.display = 'none'; show('pause', 0); show('set', 0); show('go', 0); show('shop', 0); show('gift-ui', 0); show('menu', 1);
  updateTexts(); if (!plats.length || lives <= 0) newRun();
@@ -905,6 +922,8 @@ function trace(r, col) { const pts = [], Tl = r.t || r.tf || 2; for (let i = 0; 
 function dbgLines(r) { if (!dbgG) return; while (dbgG.children.length) dbgG.remove(dbgG.children[0]); if (!save.dbg || !plats[cur + 1]) return; const A = plats[cur], Tl = plats[cur + 1], a = Tl.an; if (!r && a && a.ok) { const w = plats.slice(Math.max(0, cur - 1), cur + 3), d = dirOf(A, Tl); for (const [m, c] of [[a.lo, 0xffd400], [a.ideal, 0x22dd44], [a.hi, 0xffd400]]) dbgG.add(trace(JM.resolve(m, A, d, w, Tl.idx), c)); } if (r) dbgG.add(trace(r, r.out === 'SUCCESS' && r.zone !== 'EDGE' ? 0x22dd44 : r.zone === 'EDGE' ? 0xffd400 : 0xff3322)); }
 function resize() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); } addEventListener('resize', resize); addEventListener('orientationchange', resize);
 const ang = (a, b) => { let d = b - a; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283; return d; };
+
+const smooth = x => x * x * (3 - 2 * x), eob = x => 1 + 2.70158 * (x - 1) ** 3 + 1.70158 * (x - 1) ** 2;
 
 function camUpdate(dt, now) {
  const A = plats[cur], Tl = plats[cur + 1], c = cs, v = dirOf(A, Tl);
@@ -984,7 +1003,7 @@ function update(dt, now) {
 let last = 0;
 function frame(now) {
  requestAnimationFrame(frame); if (!R) return; let dt = Math.min(.05, (now - last) / 1000 || .016); last = now; gpoll();
- if (!paused && app !== 'LOAD') { update(dt, now); partUpd(dt); } else if (app === 'MENU') update(dt, now);
+ if (!paused && app !== 'LOAD') { try { update(dt, now); } catch (e) { console.error(e); if (giant || ph === 'STRIDE') { giant = null; gsc = 1; giantQ = false; body.scale.set(1, 1, 1); body.rotation.set(0, 0, 0); const L = plats[cur]; if (L) { pos.x = L.x; pos.y = L.y; pos.z = L.z; } ph = 'IDLE'; } } partUpd(dt); } else if (app === 'MENU') update(dt, now);
  if (msgT && performance.now() > msgT) { $('msg').style.opacity = 0; msgT = 0; }
  sun.position.set(pos.x + 12, pos.y + 22, pos.z + 8); sun.target.position.set(pos.x, pos.y, pos.z); sky.position.copy(camera.position); 
  far.position.set(camera.position.x * 0.9, camera.position.y * 0.4 - 10, camera.position.z * 0.9); for (const c of far.children) if (c.userData.sp) { c.position.x += dt * c.userData.sp; if (c.position.x > 180) c.position.x = -180; }
@@ -1002,7 +1021,7 @@ $('shopclose').onclick = () => { AU.click(); show('shop', 0); toMenu(); };
 $('secbtn').onclick = () => { AU.click(); if ($('seccode').value.trim() === '3645868') { Object.keys(AN).forEach(k => { if (!save.skins.includes(k)) save.skins.push(k); }); persist(); renderShop(); $('seccode').value = ''; msg(T('m_all'), 1500); } else { msg(T('m_inv'), 1000); } };
 $('daily').onclick = () => { promptNameIfNeeded(() => { const d = dayIdx(); if (save.sk.d !== d) { save.sk.n = save.sk.d === d - 1 ? save.sk.n + 1 : 1; save.sk.d = d; persist(); } play(todaySeed()); }); };
 $('again-same').onclick = () => play(seed);
-$('share').onclick = () => { const h = Math.round(plats[maxIdx].y * 10), url = location.href.split('?')[0] + '?seed=' + seed, txt = `Animal Jump: I reached ${h} m! Beat me on the same level:`; if (navigator.share) navigator.share({ title: 'Animal Jump', text: txt, url }).catch(() => {}); else { try { navigator.clipboard.writeText(txt + ' ' + url); } catch (e) {} $('share').textContent = 'LINK COPIED ✓'; } };
+$('share').onclick = () => { const h = mOf(maxIdx), url = location.href.split('?')[0] + '?seed=' + seed, txt = `Animal Jump: I covered ${h} m! Beat me on the same level:`; if (navigator.share) navigator.share({ title: 'Animal Jump', text: txt, url }).catch(() => {}); else { try { navigator.clipboard.writeText(txt + ' ' + url); } catch (e) {} $('share').textContent = 'LINK COPIED ✓'; } };
 $('replay').onclick = () => { AU.click(); play(); }; $('gomenub').onclick = () => { AU.click(); toMenu(); };
 $('gift-ok').onclick = () => { AU.click(); show('gift-ui', 0); app = 'PLAY'; paused = false; last = performance.now(); if (giftPrize === 0) startBalloonFlight(); else if (want || held) startCharge(); };
 $('tv').onclick = () => { save.vib = save.vib ? 0 : 1; persist(); setT(); }; $('ts').onclick = () => { save.snd = save.snd ? 0 : 1; persist(); setT(); if (AU.m) AU.m.gain.value = save.snd ? .5 : 0; else AU.init(); }; $('td').onclick = toggleDbg;
