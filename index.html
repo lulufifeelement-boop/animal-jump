@@ -204,44 +204,37 @@ const firebaseConfig = {
 let db = null, auth = null, userId = null, isCloudReady = false;
 
 async function initCloud() {
-    let booted = false;
-    const bootOnce = () => {
-        if (booted) return;
-        booted = true;
-        updateTexts();
-        boot();
-    };
-    const fallback = setTimeout(() => {
-        $('lt').textContent = 'Cloud slow — starting offline…';
-        bootOnce();
-    }, 5000);
     try {
         const appInfo = initializeApp(firebaseConfig);
         auth = getAuth(appInfo);
         db = getFirestore(appInfo);
-        await Promise.race([
+
+        // Cloud is optional: the game must never wait for Firebase.
+        const signInResult = await Promise.race([
             signInAnonymously(auth),
             new Promise((_, reject) => setTimeout(() => reject(new Error('cloud-timeout')), 4500))
         ]);
-        userId = auth.currentUser.uid;
+        userId = auth.currentUser && auth.currentUser.uid;
+        if (!userId) throw new Error('no-user');
+
         const snap = await Promise.race([
             getDoc(doc(db, 'artifacts', appId, 'users', userId)),
             new Promise((_, reject) => setTimeout(() => reject(new Error('cloud-timeout')), 4500))
         ]);
-        if (snap.exists()) {
-            const cloudData = snap.data();
-            Object.assign(save, cloudData);
+
+        // Do not replace an active run with late cloud data.
+        if (snap.exists() && app === 'MENU') {
+            Object.assign(save, snap.data());
+            updateTexts();
         }
+
         isCloudReady = true;
-        clearTimeout(fallback);
         $('lt').textContent = 'Cloud connected';
-        bootOnce();
     } catch(e) {
         console.error("Cloud init failed", e);
-        const err = e && e.message === 'cloud-timeout' ? 'Cloud slow — offline mode' : (e && e.code ? `Cloud error: ${e.code}` : 'Cloud unavailable');
-        $('lt').textContent = err;
-        clearTimeout(fallback);
-        bootOnce();
+        $('lt').textContent = e && e.message === 'cloud-timeout'
+            ? 'Offline mode'
+            : 'Cloud unavailable';
     }
 }
 
@@ -1006,6 +999,8 @@ function boot() {
 }
 
 // Start sequence
+// Start the game immediately. Firebase connects in the background and can never block startup.
+boot();
 initCloud();
 
 </script>
