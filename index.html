@@ -204,25 +204,45 @@ const firebaseConfig = {
 let db = null, auth = null, userId = null, isCloudReady = false;
 
 async function initCloud() {
+    let booted = false;
+    const bootOnce = () => {
+        if (booted) return;
+        booted = true;
+        updateTexts();
+        boot();
+    };
+    const fallback = setTimeout(() => {
+        $('lt').textContent = 'Cloud slow — starting offline…';
+        bootOnce();
+    }, 5000);
     try {
         const appInfo = initializeApp(firebaseConfig);
         auth = getAuth(appInfo);
         db = getFirestore(appInfo);
-        await signInAnonymously(auth);
+        await Promise.race([
+            signInAnonymously(auth),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('cloud-timeout')), 4500))
+        ]);
         userId = auth.currentUser.uid;
-        const snap = await getDoc(doc(db, 'artifacts', appId, 'users', userId));
+        const snap = await Promise.race([
+            getDoc(doc(db, 'artifacts', appId, 'users', userId)),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('cloud-timeout')), 4500))
+        ]);
         if (snap.exists()) {
             const cloudData = snap.data();
             Object.assign(save, cloudData);
         }
         isCloudReady = true;
+        clearTimeout(fallback);
+        $('lt').textContent = 'Cloud connected';
+        bootOnce();
     } catch(e) {
         console.error("Cloud init failed", e);
-        const err = e && e.code ? `Cloud error: ${e.code}` : 'Cloud unavailable';
+        const err = e && e.message === 'cloud-timeout' ? 'Cloud slow — offline mode' : (e && e.code ? `Cloud error: ${e.code}` : 'Cloud unavailable');
         $('lt').textContent = err;
+        clearTimeout(fallback);
+        bootOnce();
     }
-    updateTexts();
-    boot();
 }
 
 let persistTimer = null;
