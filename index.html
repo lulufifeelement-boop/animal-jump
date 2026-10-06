@@ -768,35 +768,50 @@ function platTex(kind, base, seed) {
  if (!PLAT_CACHE) PLAT_CACHE = { tex:{}, mat:{} };
  const key = kind + ':' + base.toString(16);
  if (PLAT_CACHE.tex[key]) return PLAT_CACHE.tex[key];
- const cv = document.createElement('canvas'); cv.width = cv.height = 96;
- const ctx = cv.getContext('2d'), rr = new RNG(hash(313, seed, base));
- const b = '#' + base.toString(16).padStart(6, '0');
- ctx.fillStyle = b; ctx.fillRect(0, 0, 96, 96);
+ const N = 128, cv = document.createElement('canvas'); cv.width = cv.height = N;
+ const ctx = cv.getContext('2d'), rr = new RNG(hash(913, seed, base));
+ const hex = '#' + base.toString(16).padStart(6, '0');
+ const grad = ctx.createLinearGradient(0, 0, 0, N);
+ grad.addColorStop(0, hex); grad.addColorStop(1, '#111723');
+ ctx.fillStyle = grad; ctx.fillRect(0, 0, N, N);
+ const dot = (x,y,r,c,a)=>{ctx.fillStyle=c;ctx.globalAlpha=a;ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.fill();ctx.globalAlpha=1;};
  if (kind === 'grass' || kind === 'moss') {
-  for (let i = 0; i < 260; i++) { const x = rr.next() * 96, y = rr.next() * 96, s = rr.rng(.5, 2.5); ctx.fillStyle = i % 3 ? 'rgba(255,255,255,.06)' : 'rgba(24,80,24,.12)'; ctx.fillRect(x, y, s, s * rr.rng(1, 2)); }
-  ctx.strokeStyle = 'rgba(255,255,220,.12)'; ctx.lineWidth = 1; for (let i = 0; i < 20; i++) { const x = rr.next() * 96, y = rr.next() * 96; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + rr.rng(-3, 3), y - rr.rng(2, 7)); ctx.stroke(); }
+   for(let i=0;i<520;i++){const x=rr.next()*N,y=rr.next()*N,r=rr.rng(.3,2.3);dot(x,y,r,i%4?'#d7f28c':'#173f28',i%4?.10:.18);}
+   ctx.strokeStyle='rgba(40,95,30,.55)';ctx.lineWidth=1;
+   for(let i=0;i<95;i++){const x=rr.next()*N,y=rr.next()*N;ctx.beginPath();ctx.moveTo(x,y+3);ctx.lineTo(x+rr.rng(-2,2),y-rr.rng(3,8));ctx.stroke();}
+   ctx.strokeStyle='rgba(255,239,154,.28)';ctx.lineWidth=1.2;
+   for(let i=0;i<18;i++){let x=rr.rng(0,N),y=rr.rng(0,N);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+rr.rng(-8,8),y+rr.rng(4,10));ctx.stroke();}
+   if(kind==='moss')for(let i=0;i<40;i++)dot(rr.next()*N,rr.rng(N*.58,N),rr.rng(1,3),'#17371f',.24);
  } else if (kind === 'stone' || kind === 'ancient') {
-  for (let i = 0; i < 80; i++) { const x = rr.next() * 96, y = rr.next() * 96; ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.06)' : 'rgba(0,0,0,.12)'; ctx.fillRect(x, y, rr.rng(2, 9), rr.rng(1, 4)); }
-  ctx.strokeStyle = 'rgba(30,30,40,.26)'; ctx.lineWidth = 1.4;
-  for (let i = 0; i < 7; i++) { let x = rr.rng(5, 90), y = rr.rng(5, 90); ctx.beginPath(); ctx.moveTo(x, y); for (let j = 0; j < 4; j++) { x += rr.rng(-8, 8); y += rr.rng(4, 10); ctx.lineTo(x, y); } ctx.stroke(); }
- } else if (kind === 'volcanic') {
-  for (let i = 0; i < 90; i++) { const x = rr.next() * 96, y = rr.next() * 96; ctx.fillStyle = i % 2 ? 'rgba(255,160,60,.05)' : 'rgba(0,0,0,.2)'; ctx.fillRect(x, y, rr.rng(2, 7), rr.rng(2, 5)); }
-  ctx.strokeStyle = 'rgba(255,110,20,.55)'; ctx.lineWidth = 1.5;
-  for (let i = 0; i < 5; i++) { let x = rr.rng(8, 88), y = rr.rng(8, 88); ctx.beginPath(); ctx.moveTo(x, y); for (let j = 0; j < 3; j++) { x += rr.rng(-10, 10); y += rr.rng(6, 12); ctx.lineTo(x, y); } ctx.stroke(); }
+   for(let i=0;i<260;i++){const x=rr.next()*N,y=rr.next()*N,w=rr.rng(1,8),h=rr.rng(1,5);ctx.fillStyle=i%2?'rgba(255,255,255,.07)':'rgba(15,19,24,.14)';ctx.fillRect(x,y,w,h);}
+   ctx.strokeStyle='rgba(25,30,38,.36)';ctx.lineWidth=1.5;
+   for(let i=0;i<13;i++){let x=rr.rng(0,N),y=rr.rng(0,N);ctx.beginPath();ctx.moveTo(x,y);for(let j=0;j<5;j++){x+=rr.rng(-12,12);y+=rr.rng(3,11);ctx.lineTo(x,y);}ctx.stroke();}
+   if(kind==='ancient'){ctx.strokeStyle='rgba(151,127,255,.32)';ctx.lineWidth=1;for(let i=0;i<9;i++){const x=rr.rng(8,N-8),y=rr.rng(8,N-8),r=rr.rng(4,9);ctx.beginPath();ctx.arc(x,y,r,0,6.283);ctx.moveTo(x-r,y);ctx.lineTo(x+r,y);ctx.moveTo(x,y-r);ctx.lineTo(x,y+r);ctx.stroke();}}
  } else if (kind === 'crystal') {
-  for (let i = 0; i < 110; i++) { ctx.fillStyle = i % 2 ? 'rgba(140,220,255,.08)' : 'rgba(80,40,200,.10)'; ctx.fillRect(rr.next()*96, rr.next()*96, rr.rng(1,4), rr.rng(1,5)); }
-  ctx.strokeStyle = 'rgba(120,220,255,.28)'; ctx.lineWidth = 1; for (let i = 0; i < 8; i++) { ctx.beginPath(); ctx.moveTo(rr.rng(0,96), rr.rng(0,96)); ctx.lineTo(rr.rng(0,96), rr.rng(0,96)); ctx.stroke(); }
+   const cg=ctx.createLinearGradient(0,0,N,N);cg.addColorStop(0,'rgba(15,70,120,.55)');cg.addColorStop(.5,'rgba(20,130,180,.10)');cg.addColorStop(1,'rgba(80,35,160,.45)');ctx.fillStyle=cg;ctx.fillRect(0,0,N,N);
+   ctx.strokeStyle='rgba(101,232,255,.55)';ctx.lineWidth=1.2;
+   for(let i=0;i<34;i++){let x=rr.rng(0,N),y=rr.rng(0,N);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+rr.rng(-12,12),y+rr.rng(-18,18));ctx.stroke();}
+   for(let i=0;i<90;i++)dot(rr.next()*N,rr.next()*N,rr.rng(.5,2.5),i%2?'#6ce7ff':'#a78bff',i%2?.18:.13);
+ } else if (kind === 'volcanic') {
+   for(let i=0;i<320;i++){const x=rr.next()*N,y=rr.next()*N,w=rr.rng(1,7),h=rr.rng(1,4);ctx.fillStyle=i%2?'rgba(255,173,64,.05)':'rgba(0,0,0,.20)';ctx.fillRect(x,y,w,h);}
+   ctx.strokeStyle='rgba(255,109,20,.85)';ctx.lineWidth=2;
+   for(let i=0;i<10;i++){let x=rr.rng(6,N-6),y=rr.rng(6,N-6);ctx.beginPath();ctx.moveTo(x,y);for(let j=0;j<4;j++){x+=rr.rng(-10,10);y+=rr.rng(5,14);ctx.lineTo(x,y);}ctx.stroke();}
  } else if (kind === 'ice') {
-  for (let i = 0; i < 110; i++) { ctx.fillStyle = i % 2 ? 'rgba(255,255,255,.16)' : 'rgba(80,160,255,.10)'; ctx.fillRect(rr.next()*96, rr.next()*96, rr.rng(2,7), rr.rng(1,4)); }
+   const ig=ctx.createLinearGradient(0,0,N,N);ig.addColorStop(0,'#edfaff');ig.addColorStop(1,'#69b7e8');ctx.fillStyle=ig;ctx.fillRect(0,0,N,N);
+   ctx.strokeStyle='rgba(255,255,255,.42)';ctx.lineWidth=1;
+   for(let i=0;i<28;i++){const x=rr.rng(0,N),y=rr.rng(0,N);ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+rr.rng(-14,14),y+rr.rng(-8,8));ctx.stroke();}
  }
- const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1.8, 1.8); t.encoding = THREE.sRGBEncoding;
+ const t = new THREE.CanvasTexture(cv);
+ t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1.7,1.7); t.encoding = THREE.sRGBEncoding;
+ t.anisotropy = Math.min(4, R && R.capabilities ? R.capabilities.getMaxAnisotropy() : 1);
  return PLAT_CACHE.tex[key] = t;
 }
 function platMat(key, color, kind, rough=.85, emissive=0, ei=0) {
  if (!PLAT_CACHE) PLAT_CACHE = { tex:{}, mat:{} };
  const mk = key + ':' + color.toString(16) + ':' + kind + ':' + emissive;
  if (PLAT_CACHE.mat[mk]) return PLAT_CACHE.mat[mk];
- const m = new THREE.MeshStandardMaterial({ map: platTex(kind, color, key.length * 17 + color), roughness: rough, metalness: kind === 'crystal' || kind === 'ice' ? .08 : 0, emissive, emissiveIntensity: ei });
+ const tex = platTex(kind, color, key.length * 17 + color);
+ const m = new THREE.MeshStandardMaterial({ color: 0xffffff, map: tex, bumpMap: tex, bumpScale: kind === 'crystal' ? .16 : kind === 'stone' || kind === 'ancient' ? .10 : .055, roughness: rough, metalness: kind === 'crystal' || kind === 'ice' ? .08 : 0, emissive, emissiveIntensity: ei });
  return PLAT_CACHE.mat[mk] = m;
 }
 function platMesh(p) {
@@ -804,11 +819,11 @@ function platMesh(p) {
  const g = new THREE.Group(), r = p.r, rr = new RNG(hash(77, p.idx));
  const style = th, shape = p.sh;
  const C = [
-  {top:0x79c951, dirt:0xa76b3d, rock:0x7f8790},
-  {top:0xe4ba6b, dirt:0x9a6845, rock:0x887b76},
-  {top:0x4a5c88, dirt:0x39445a, rock:0x56647c},
-  {top:0x4e934d, dirt:0x5b5348, rock:0x5f6668},
-  {top:0x7bcf7d, dirt:0x78608e, rock:0x74648d}
+  {top:0x70c84e, dirt:0x965c31, rock:0x6f645b},
+  {top:0xd8a45b, dirt:0x8a5739, rock:0x71635e},
+  {top:0x355873, dirt:0x273746, rock:0x4e6272},
+  {top:0x477f4a, dirt:0x4a4030, rock:0x5f625b},
+  {top:0x6652b7, dirt:0x403657, rock:0x625c78}
  ][style];
  const geomTop = shape === 1
    ? new THREE.BoxGeometry(1.8, .14, 1.8)
@@ -816,9 +831,9 @@ function platMesh(p) {
  const geomBand = shape === 1
    ? new THREE.BoxGeometry(1.7, .44, 1.7)
    : new THREE.CylinderGeometry(1, .93, .44, style === 1 ? 8 : style === 2 ? 6 : 20);
- const t = new THREE.Mesh(geomTop, platMat('t'+style, C.top, style===3?'moss':style===2?'crystal':style===1?'stone':'grass', .78));
+ const t = new THREE.Mesh(geomTop, platMat('t'+style, C.top, style===4?'ancient':style===3?'moss':style===2?'crystal':style===1?'stone':'grass', .78));
  t.scale.set(r * .98, 1, r * .98); t.position.y = -.03; t.receiveShadow = true;
- const band = new THREE.Mesh(geomBand, platMat('b'+style, C.dirt, style===1?'stone':style===3?'moss':'stone', .94));
+ const band = new THREE.Mesh(geomBand, platMat('b'+style, C.dirt, style===4?'ancient':style===3?'moss':style===1?'stone':'stone', .94));
  band.scale.set(r, 1, r); band.position.y = -.32; band.castShadow = band.receiveShadow = true;
  g.add(t, band);
 
@@ -1020,7 +1035,7 @@ function startBalloonFlight() {
 }
 
 function trace(r, col) { const pts = [], Tl = r.t || r.tf || 2; for (let i = 0; i <= 40; i++) { const p = pathAt(r, Math.max(0, Tl * i / 40)); pts.push(new THREE.Vector3(p.x, p.y + .2, p.z)); } return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: col })); }
-function dbgLines(r) { if (!dbgG) return; while (dbgG.children.length) dbgG.remove(dbgG.children[0]); if (!save.dbg || !plats[cur + 1]) return; const A = plats[cur], Tl = plats[cur + 1], a = Tl.an; if (!r && a && a.ok) { const w = plats.slice(Math.max(0, cur - 1), cur + 3), d = dirOf(A, Tl); for (const [m, c] of [[a.lo, 0xffd400], [a.ideal, 0x22dd44], [a.hi, 0xffd400]]) dbgG.add(trace(JM.resolve(m, A, d, w, Tl.idx), c)); } if (r) dbgG.add(trace(r, r.out === 'SUCCESS' && r.zone !== 'EDGE' ? 0x22dd44 : r.zone === 'EDGE' ? 0xffd400 : 0xff3322)); }
+function dbgLines() { if (!dbgG) return; while (dbgG.children.length) dbgG.remove(dbgG.children[0]); }
 function resize() { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix(); } addEventListener('resize', resize); addEventListener('orientationchange', resize);
 const ang = (a, b) => { let d = b - a; while (d > Math.PI) d -= 6.283; while (d < -Math.PI) d += 6.283; return d; };
 
