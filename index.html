@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>Animal Jump</title>
+<!-- build: moving-platforms-2026-10-07 -->
 <style>
 :root{--c1:#ffb04a;--c2:#ff8a1f;--bg:#0a1e3c}
 html,body{margin:0;height:100%;overflow:hidden;background:#bfe3ff;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;touch-action:auto;user-select:none;-webkit-user-select:none}
@@ -539,8 +540,8 @@ migrateMeters();
 let run = null, runT = 0, nextSeed = 0, urlSeed = +new URLSearchParams(location.search).get('seed') || 0, gh = null, gs = null, gk = 0, gcur = 0, gMesh = null, ghLabel = '';
 const todaySeed = () => { const d = new Date(); return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate(); };
 const dayIdx = () => { const d = new Date(); return Math.floor((d.getTime() - d.getTimezoneOffset() * 60000) / 864e5); };
-function ensure() { while (plats.length <= Math.max(cur, gcur) + G.gen.ahead) { const c = genNext(seed, plats.length, plats); if (c.idx === nextGiftIdx) { c.gift = true; nextGiftIdx += giftGap(c.idx); } plats.push(c); } }
-function ensureTo(n) { while (plats.length <= n) { const c = genNext(seed, plats.length, plats); if (c.idx === nextGiftIdx) { c.gift = true; nextGiftIdx += giftGap(c.idx); } plats.push(c); } }
+function ensure() { while (plats.length <= Math.max(cur, gcur) + G.gen.ahead) { const c = genNext(seed, plats.length, plats); if (c.idx === nextGiftIdx) { c.gift = true; nextGiftIdx += giftGap(c.idx); } markMovingPlatform(c, plats[plats.length - 1]); plats.push(c); } }
+function ensureTo(n) { while (plats.length <= n) { const c = genNext(seed, plats.length, plats); if (c.idx === nextGiftIdx) { c.gift = true; nextGiftIdx += giftGap(c.idx); } markMovingPlatform(c, plats[plats.length - 1]); plats.push(c); } }
 function ghostInit() {
  gh = save.ghosts[seed] || null; gs = null; gk = 0; gcur = 0; ghLabel = '';
  if (!gMesh) { gMesh = new THREE.Group(); const m = new THREE.MeshBasicMaterial({ color: 0x66ddff, transparent: true, opacity: .35, depthWrite: false }); const b = new THREE.Mesh(new THREE.SphereGeometry(.55, 14, 10), m); b.position.y = .6; b.scale.set(1, .9, 1.1); const hd = new THREE.Mesh(new THREE.SphereGeometry(.45, 14, 10), m); hd.position.set(0, 1.3, .12); gMesh.add(b, hd); scene.add(gMesh); }
@@ -821,6 +822,92 @@ function platMat(key, color, kind, rough=.85, emissive=0, ei=0) {
  return PLAT_CACHE.mat[mk] = m;
 }
 const rrngSafe = (rr, a, b) => a + (b - a) * rr.next();
+
+/* ===== MOVING PLATFORMS =====
+   Platforms move deterministically from the run seed.
+   The player always gets a fair target: the current platform stays still,
+   and the next target freezes during the airborne part of the jump.
+*/
+function markMovingPlatform(p, prev) {
+  if (!p || !prev || p.idx < 8) return;
+  if (p.r < 1.0 || p.diff > 72) return;
+
+  // No consecutive movers: keep the rhythm readable.
+  if (prev.move) return;
+  if (plats.length >= 2 && plats[plats.length - 2] && plats[plats.length - 2].move) return;
+
+  // Deterministic chance: the same seed creates the same movers every run.
+  if ((hash(seed, p.idx, 44017) % 100) >= 16) return;
+
+  const h = hash(seed, p.idx, 44018);
+  const mode = (h & 1) ? 'side' : 'forward';
+  const d = dirOf(prev, p);
+
+  // side   = left/right relative to the route
+  // forward = forward/back along the route
+  const dx = mode === 'side' ? -d.z : d.x;
+  const dz = mode === 'side' ? d.x : d.z;
+
+  const amp = .68 + (hash(seed, p.idx, 44019) % 100) / 100 * .42;
+  const speed = .60 + (hash(seed, p.idx, 44020) % 100) / 100 * .34;
+  const phase = (hash(seed, p.idx, 44021) % 628) / 100;
+
+  p.move = {
+    mode, amp, speed, phase, dx, dz,
+    baseX: p.x, baseZ: p.z,
+    frozen: false, freezeAt: 0,
+    holdX: p.x, holdZ: p.z,
+    yaw: Math.atan2(dx, dz)
+  };
+}
+
+function updateMovingPlatforms(now) {
+  const airborne = ph === 'AIR' || ph === 'GLIDE' || ph === 'BALLOON';
+  const giant = ph === 'STRIDE' || ph === 'GROW';
+
+  for (let i = Math.max(1, cur - 2); i <= Math.min(plats.length - 1, cur + G.gen.ahead + 1); i++) {
+    const p = plats[i];
+    if (!p || !p.move) continue;
+
+    const mv = p.move;
+
+    // Never let the platform under the player move away.
+    // Freeze the actual target during flight so the jump remains deterministic.
+    // Giant traversal freezes the route as well.
+    const freeze = i === cur || (airborne && i === cur + 1) || giant;
+
+    if (freeze) {
+      if (!mv.frozen) {
+        mv.frozen = true;
+        mv.freezeAt = now;
+        mv.holdX = p.x;
+        mv.holdZ = p.z;
+      }
+      p.x = mv.holdX;
+      p.z = mv.holdZ;
+      continue;
+    }
+
+    if (mv.frozen) {
+      // Continue the same sine phase after the pause; no visual teleport.
+      mv.phase -= (now - mv.freezeAt) * 0.001 * mv.speed;
+      mv.frozen = false;
+    }
+
+    const q = Math.sin(now * 0.001 * mv.speed + mv.phase);
+    p.x = mv.baseX + mv.dx * mv.amp * q;
+    p.z = mv.baseZ + mv.dz * mv.amp * q;
+  }
+}
+
+function syncMovingPlatformMeshes() {
+  for (const [i, m] of pm) {
+    const p = plats[i];
+    if (!p || !p.move) continue;
+    m.position.set(p.x, p.y, p.z);
+  }
+}
+
 function platMesh(p) {
  const th = Math.min(TH.length - 1, Math.floor(p.idx / 15) % TH.length);
  const g = new THREE.Group(), r = p.r, rr = new RNG(hash(77, p.idx));
@@ -1000,6 +1087,45 @@ function platMesh(p) {
    const bow = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.08, 8, 16), rm); bow.position.y = 0.8; bow.rotation.x = 1.57;
    gg.add(bx, rb1, rb2, bow); gg.userData.gift = true; g.add(gg);
  }
+
+ if (p.move) {
+   // Cyan motion cue: a ring + two opposing chevrons, rotated to the actual movement axis.
+   const fx = new THREE.Group();
+   const fm = new THREE.MeshStandardMaterial({
+     color: 0x7ee7ff,
+     emissive: 0x239dcc,
+     emissiveIntensity: 1.1,
+     roughness: .35,
+     metalness: .05,
+     transparent: true,
+     opacity: .9
+   });
+
+   const ring = new THREE.Mesh(
+     new THREE.TorusGeometry(Math.max(.38, r * .34), .032, 8, 24),
+     fm
+   );
+   ring.rotation.x = Math.PI / 2;
+   ring.position.y = .18;
+   fx.add(ring);
+
+   const arrowA = new THREE.Mesh(new THREE.ConeGeometry(.11, .34, 4), fm);
+   const arrowB = new THREE.Mesh(new THREE.ConeGeometry(.11, .34, 4), fm);
+   const off = Math.max(.42, r * .58);
+   arrowA.position.set(0, .25, off);
+   arrowB.position.set(0, .25, -off);
+   arrowA.rotation.x = -Math.PI / 2;
+   arrowB.rotation.x = Math.PI / 2;
+   fx.add(arrowA, arrowB);
+
+   fx.rotation.y = p.move.yaw;
+   fx.userData.moveFx = true;
+   fx.userData.baseY = .18;
+   g.add(fx);
+
+   anim.push({o:fx, s:rrngSafe(rr,0,6.28), bob:.035, y:.18});
+ }
+
  g.userData.pAnim = anim; g.position.set(p.x,p.y,p.z); return g;
 }
 
@@ -1244,11 +1370,11 @@ function update(dt, now) {
 let last = 0;
 function frame(now) {
  requestAnimationFrame(frame); if (!R) return; let dt = Math.min(.05, (now - last) / 1000 || .016); last = now; gpoll();
- if (!paused && app !== 'LOAD') { try { update(dt, now); } catch (e) { console.error(e); if (giant || ph === 'STRIDE') { giant = null; gsc = 1; giantQ = false; body.scale.set(1, 1, 1); body.rotation.set(0, 0, 0); const L = plats[cur]; if (L) { pos.x = L.x; pos.y = L.y; pos.z = L.z; } ph = 'IDLE'; } } partUpd(dt); } else if (app === 'MENU') update(dt, now);
+ if (!paused && app !== 'LOAD') { updateMovingPlatforms(now); try { update(dt, now); } catch (e) { console.error(e); if (giant || ph === 'STRIDE') { giant = null; gsc = 1; giantQ = false; body.scale.set(1, 1, 1); body.rotation.set(0, 0, 0); const L = plats[cur]; if (L) { pos.x = L.x; pos.y = L.y; pos.z = L.z; } ph = 'IDLE'; } } partUpd(dt); } else if (app === 'MENU') update(dt, now);
  if (msgT && performance.now() > msgT) { $('msg').style.opacity = 0; msgT = 0; }
  sun.position.set(pos.x + 12, pos.y + 22, pos.z + 8); sun.target.position.set(pos.x, pos.y, pos.z); sky.position.copy(camera.position); 
  far.position.set(camera.position.x * 0.9, camera.position.y * 0.4 - 10, camera.position.z * 0.9); for (const c of far.children) if (c.userData.sp) { c.position.x += dt * c.userData.sp; if (c.position.x > 180) c.position.x = -180; }
- if (plats.length) { sync(dt); camUpdate(dt, now); R.render(scene, camera); }
+ if (plats.length) { sync(dt); syncMovingPlatformMeshes(); camUpdate(dt, now); R.render(scene, camera); }
  fpsA += (1 / dt - fpsA) * .05; fpsT += dt; if (fpsT > 2) { fpsT = 0; if (fpsA < 42 && pr > .7) { pr *= .85; R.setPixelRatio(pr); resize(); } }
  if (save.dbg && now - dbgT > 150) { dbgT = now; const Tl = plats[cur + 1] || {}, a = Tl.an || {}, r = lastRes || {}; $('dbg').textContent = `seed ${seed} idx ${cur + 1}\ncharge ${ph === 'CHARGING' ? Math.floor(now - t0 - pa) : r.ms | 0}ms P ${(ph === 'CHARGING' ? cP : r.P || 0).toFixed(2)}\nreqP ${(a.reqP || 0).toFixed(2)} win ${a.win | 0}ms\ndist ${(a.dist || 0).toFixed(1)} dY ${(a.dy || 0).toFixed(1)}\nfps ${fpsA | 0} pr ${pr.toFixed(2)}`; }
 }
