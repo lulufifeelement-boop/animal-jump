@@ -162,7 +162,7 @@ const LANG = {
   ab_raccoon:"Thief", ab_raccoon_u1:"Gifts give 2 prizes", ab_raccoon_u2:"2 prizes, coin prize 75, x2 lasts 15", ab_raccoon_u3:"2 prizes, coin prize 100, x2 lasts 20",
   ab_pig:"Lucky Coin", ab_pig_u1:"x3 coins earned", ab_pig_u2:"x4 coins earned", ab_pig_u3:"x5 coins earned",
   ab_capybara:"Calm", ab_capybara_u1:"Edge landings keep combo", ab_capybara_u2:"…and give +1 coin", ab_capybara_u3:"…and count as perfect",
-  ab_panda:"Strong Legs", ab_panda_u1:"+10% jump power", ab_panda_u2:"+15% jump power", ab_panda_u3:"+20% jump power",
+  ab_panda:"Triple Jump", ab_panda_u1:"1 extra air jump", ab_panda_u2:"2 extra air jumps", ab_panda_u3:"2 extra air jumps + stronger air jumps", air_msg:"AIR JUMP!",
   ab_dino:"Stomp", ab_dino_u1:"After 3 perfects (not necessarily in a row): grows into a giant, steps over 4 platforms", ab_dino_u2:"Steps over 5 platforms", ab_dino_u3:"2 perfects are enough, 6 platforms",
   ab_cat:"Claws", ab_cat_u1:"Grab edges up to 1.2m (1 charge/8 pl)", ab_cat_u2:"1.8m reach, charge/6 pl", ab_cat_u3:"2.5m reach, charge/4, 3 charges",
   ab_bear:"Tough", ab_bear_u1:"6 lives, +1 every 20 pl", ab_bear_u2:"6 lives, +1 every 15 pl", ab_bear_u3:"6 lives, +1 every 10 pl",
@@ -186,7 +186,7 @@ const LANG = {
   ab_raccoon:"Вор", ab_raccoon_u1:"Подарки дают 2 приза", ab_raccoon_u2:"2 приза, 75 монет, x2 длится 15", ab_raccoon_u3:"2 приза, 100 монет, x2 длится 20",
   ab_pig:"Монетка", ab_pig_u1:"Монеты x3", ab_pig_u2:"Монеты x4", ab_pig_u3:"Монеты x5",
   ab_capybara:"Спокойствие", ab_capybara_u1:"Приземление на край не сбивает комбо", ab_capybara_u2:"…и даёт +1 монету", ab_capybara_u3:"…и считается идеальным",
-  ab_panda:"Сильные лапы", ab_panda_u1:"+10% к силе прыжка", ab_panda_u2:"+15% к силе прыжка", ab_panda_u3:"+20% к силе прыжка",
+  ab_panda:"Тройной прыжок", ab_panda_u1:"1 дополнительный прыжок в воздухе", ab_panda_u2:"2 дополнительных прыжка", ab_panda_u3:"2 прыжка + сильнее в воздухе", air_msg:"ВОЗДУШНЫЙ ПРЫЖОК!",
   ab_dino:"Топот", ab_dino_u1:"После 3 идеальных (не обязательно подряд): вырастает в гиганта и переступает 4 платформы", ab_dino_u2:"Переступает 5 платформ", ab_dino_u3:"Достаточно 2 идеальных, 6 платформ",
   ab_cat:"Когти", ab_cat_u1:"Хват за край до 1.2м (1/8 пл)", ab_cat_u2:"Радиус 1.8м, заряд/6 пл", ab_cat_u3:"Радиус 2.5м, заряд/4, 3 заряда",
   ab_bear:"Крепкий", ab_bear_u1:"6 жизней, +1 каждые 20 пл", ab_bear_u2:"6 жизней, +1 каждые 15 пл", ab_bear_u3:"6 жизней, +1 каждые 10 пл",
@@ -382,16 +382,19 @@ const hash = (...n) => { let h = 2166136261; for (const x of n) { h = Math.imul(
 const curveP = ms => { ms = cl(ms, 0, PH.maxMs); const c = PH.curve; for (let i=1; i<c.length; i++) if (ms <= c[i][0]) { const a = c[i-1], b = c[i]; return a[1] + (b[1] - a[1]) * (ms - a[0]) / (b[0] - a[0]); } return 1; };
 const dirOf = (a, b) => { const x = b.x - a.x, z = b.z - a.z, n = Math.hypot(x, z) || 1; return { x: x/n, z: z/n }; };
 
-const getVMax = () => {
-    let v = PH.vMax;
-    if (typeof AB_on !== 'undefined' && AB_on('panda')) v *= [1.1, 1.15, 1.2][lv() - 1];
-    return v;
-};
+const getVMax = () => PH.vMax;
+
+/* Panda triple jump */
+const pandaAirMax = () => AB_on('panda') ? (lv() >= 2 ? 2 : 1) : 0;
+const pandaAirPower = () => [0.78, 0.86, 0.94][lv() - 1];
+function startAirCharge() { if (airCh || pandaAirMax() <= airJumpsUsed || paused || !res) return; airCh = true; airT0 = performance.now(); airJT0 = jt; airPausedMs = 0; cP = 0; cue = [0,0,0]; AU.blip(420,.12,'triangle',.1,700); }
+function airChargeStep(now) { const ms = Math.max(0, Math.floor(now - airT0)); cP = curveP(ms); jt = airJT0 + ms * .001 * .3; AU.charge(cP,true); if(cP>=.4&&!cue[0]){cue[0]=1;vib(12);} if(cP>=.7&&!cue[1]){cue[1]=1;vib(20);} }
+function releaseAir() { if(!airCh) return; const now=performance.now(), ms=Math.min(PH.maxMs,Math.max(0,Math.floor(now-airT0))); airCh=false; AU.charge(0,false); const tj=airJT0+ms*.001*.3; const tEnd=res.landed?res.t:res.tf; if(tj>=tEnd){jt=tEnd;return;} const q=pathAt(res,tj), A=plats[cur], Tl=plats[cur+1], d=dirOf(A,Tl); const r2=JM.resolve(Math.min(PH.maxMs,ms),{x:q.x,y:q.y,z:q.z},d,plats.slice(Math.max(0,cur-1),cur+5),Tl.idx,pandaAirPower()); res=r2; lastRes=r2; jt=0; ph='AIR'; airJumpsUsed++; run.ok=false; fox.rotation.x=0; abHud(); msg(T('air_msg'),700); AU.jump(); cs.shake=.12; emit(q.x,q.y+.1,q.z,30,[.9,.95,1],3.5,1.5); dbgLines(r2); }
 
 const JM = {
  launch(P) { const v = PH.vMin + P * (getVMax() - PH.vMin), a = PH.ang * RAD; return [v * Math.cos(a), v * Math.sin(a)]; },
- resolve(ms, s, d, pl, ti) {
-  const P = curveP(ms), [vh, vy] = JM.launch(P), g = PH.g; let b = null;
+ resolve(ms, s, d, pl, ti, power = 1) {
+  const P = curveP(ms), [vh0, vy0] = JM.launch(P), vh = vh0 * power, vy = vy0 * power, g = PH.g; let b = null;
   for (const p of pl) {
    const ds = vy * vy - 2 * g * (p.y - s.y); if (ds < 0) continue;
    const t = (vy + Math.sqrt(ds)) / g, x = s.x + d.x * vh * t, z = s.z + d.z * vh * t;
@@ -472,12 +475,12 @@ const AB = {
  fox: { i: '🎁' }, bunny: { i: '🥕' }, raccoon: { i: '🦝' }, pig: { i: '🪙' }, capybara: { i: '🌿' }, panda: { i: '☯️' }, dino: { i: '🦖' }, cat: { i: '🐾' }, bear: { i: '🛡️' }, goose: { i: '🪿' }
 };
 const upLv = k => (save.up && save.up[k]) || 1, lv = () => upLv(curSkin()), upCost = k => Math.round(Math.max(AN[k].p, 200) * (upLv(k) === 1 ? .5 : 1));
-let stompCount = 0, dinoC = 0, clawCh = 1, abM10 = 0, abM20 = 0, cFrac = 0;
+let stompCount = 0, dinoC = 0, clawCh = 1, abM10 = 0, abM20 = 0, cFrac = 0, airCh = false, airJumpsUsed = 0, airT0 = 0, airJT0 = 0, airPausedMs = 0;
 const curSkin = () => (run && run.tmp) || save.skin;
 const AB_on = id => !!run && !run.classic && curSkin() === id;
 function endTmp() { if (run && run.tmp) { run.tmp = null; const ry = fox.rotation.y; buildAnimal(save.skin); fox.rotation.y = ry; abHud(); } }
 const giftGap = i => AB_on('fox') ? [7, 6, 5][lv() - 1] + (i % 5) : 10 + (i % 6);
-function abHud() { const e = $('ab'); if (!run) return; if (run.classic) { e.textContent = 'Classic mode · no abilities'; return; } const k = curSkin(), a = AB[k]; if (!a) return; e.textContent = (run.tmp ? '🐾❓ ' : '') + a.i + ' ' + T('ab_'+k) + ' L' + lv() + (k === 'cat' ? ' ×' + clawCh : k === 'dino' ? ' · ' + dinoC + '/' + [3, 3, 2][lv() - 1] : k === 'goose' ? (maxIdx >= (run.gAt || 0) ? ' ✓' : ' ⏳' + ((run.gAt || 0) - maxIdx)) : ''); }
+function abHud() { const e = $('ab'); if (!run) return; if (run.classic) { e.textContent = 'Classic mode · no abilities'; return; } const k = curSkin(), a = AB[k]; if (!a) return; let extra = ''; if (k === 'cat') extra = ' ×' + clawCh; else if (k === 'dino') extra = ' · ' + dinoC + '/' + [3, 3, 2][lv() - 1]; else if (k === 'goose') extra = maxIdx >= (run.gAt || 0) ? ' ✓' : ' ⏳' + ((run.gAt || 0) - maxIdx); else if (k === 'panda') { const maxA = lv() >= 2 ? 2 : 1; extra = ' · ' + '●'.repeat(Math.max(0, maxA - airJumpsUsed)) + '○'.repeat(Math.min(maxA, airJumpsUsed)); } e.textContent = (run.tmp ? '🐾❓ ' : '') + a.i + ' ' + T('ab_'+k) + ' L' + lv() + extra; }
 function tryClaw(r, Tl) {
  const reach = [1.2, 1.8, 2.5][lv() - 1], g = PH.g, cy = Tl.y - [1.2, 1.6, 2][lv() - 1], ds = r.vy * r.vy - 2 * g * (cy - r.s.y); if (ds < 0) return;
  const t = (r.vy + Math.sqrt(ds)) / g, q = pathAt(r, t), d = Math.hypot(q.x - Tl.x, q.z - Tl.z);
@@ -685,8 +688,54 @@ function buildGoose() {
  for (const i of [-1, 0, 1]) { const f = new THREE.Mesh(new THREE.ConeGeometry(.07, .42, 6), wh); f.rotation.set(-1.32, 0, i * .25); f.position.set(i * .05, .03, -.2); tail.add(f); }
  body.add(head, tail); scene.add(fox); if (typeof pos !== 'undefined' && pos) fox.position.set(pos.x, pos.y, pos.z);
 }
+function buildPanda() {
+ if (fox) scene.remove(fox);
+ fox = new THREE.Group(); body = new THREE.Group(); fox.add(body);
+ const wf = TM(0xf6f5ef, 'fluff'), bk = TM(0x17171c, 'fluff'), gy = TM(0xe9e8e0, 'fluff');
+ const ey = new THREE.MeshStandardMaterial({ color: 0x0c0a0a, roughness: .06, metalness: .2 }), hh = new THREE.MeshBasicMaterial({ color: 0xffffff }), nz = M(0x101012, .25), cw = M(0xe8e2d0, .5);
+ body.add(
+  sph(.52, wf, 0, .8, 0, 1, .88, 1.28),
+  sph(.5, wf, 0, .88, .4, 1.02, .98, .95),
+  sph(.44, wf, 0, .74, -.52, 1, .9, 1),
+  sph(.4, gy, 0, .55, .05, .95, .6, 1.4),
+  sph(.36, wf, 0, .95, .62, 1.05, .9, .9)
+ );
+ body.add(sph(.54, bk, 0, .88, .43, 1, .94, .3));
+ for (const s of [-1, 1]) {
+  const fl = new THREE.Mesh(new THREE.CylinderGeometry(.15, .13, .6, 10), bk);
+  fl.position.set(s * .3, .32, .5); fl.castShadow = true;
+  body.add(fl, sph(.2, bk, s * .3, .62, .46, 1, 1.15, 1), sph(.15, bk, s * .3, .05, .58, 1, .55, 1.45), sph(.045, bk, s * .17, .13, .5));
+  for (let i = -1; i <= 1; i++) body.add(sph(.025, cw, s * .3 + i * .06, .045, .78, .8, .6, 1.3));
+  const hl = new THREE.Mesh(new THREE.CylinderGeometry(.13, .12, .42, 10), bk);
+  hl.position.set(s * .3, .22, -.5); hl.castShadow = true;
+  body.add(sph(.27, bk, s * .32, .58, -.54, .95, 1.15, 1.1), hl, sph(.15, bk, s * .3, .05, -.42, 1, .55, 1.45));
+ }
+ head = new THREE.Group();
+ head.position.set(0, 1.05, .88);
+ head.scale.set(.88, .88, .88);
+ head.add(
+  sph(.4, wf, 0, 0, 0, 1.12, .95, 1),
+  sph(.2, wf, -.27, -.1, .06),
+  sph(.2, wf, .27, -.1, .06),
+  sph(.18, wf, 0, -.12, .34, 1.1, .78, 1.1),
+  sph(.075, nz, 0, -.04, .5, 1.35, .8, .8)
+ );
+ const sm = new THREE.Mesh(new THREE.TorusGeometry(.065, .009, 6, 12, Math.PI), nz);
+ sm.rotation.z = Math.PI; sm.position.set(0, -.15, .535); head.add(sm);
+ for (const s of [-1, 1]) {
+  const p = sph(.13, bk, s * .17, .06, .36, .85, 1.4, .5); p.rotation.z = s * .5; head.add(p);
+  head.add(sph(.03, ey, s * .165, .075, .41), sph(.011, hh, s * .175, .09, .435));
+  const e = sph(.14, bk, s * .3, .31, -.04, 1, 1, .55); e.rotation.z = -s * .25; head.add(e);
+ }
+ body.add(head);
+ tail = new THREE.Group(); tail.position.set(0, .76, -.92);
+ tail.add(sph(.09, wf, 0, 0, -.04, .8, 1, 1.3)); body.add(tail);
+ shadeModel(fox); scene.add(fox);
+ if (typeof pos !== 'undefined' && pos) fox.position.set(pos.x, pos.y, pos.z);
+}
+
 function buildAnimal(type) {
- wL = wR = tipL = tipR = null; if (type === 'dino') return buildTRex(); if (type === 'goose') return buildGoose();
+ wL = wR = tipL = tipR = null; if (type === 'dino') return buildTRex(); if (type === 'goose') return buildGoose(); if (type === 'panda') return buildPanda();
  if (fox) scene.remove(fox); const A = AN[type] || AN.fox; fox = new THREE.Group(); body = new THREE.Group(); fox.add(body);
  const KD = KIND[type], F = (c, k = KD) => TM(c, k), fur = F(A.c1), c2 = F(A.c2, KD === 'tabby' ? 'fur' : KD), dk = M(0x2a1b18, .35), wh = F(0xffffff, KD === 'tabby' ? 'fur' : KD), pk = F(0xff9fb5), bk = F(0x1c1c22), pg2 = F(0xff8fb0), gr = M(0x7be07b, .3), ey = new THREE.MeshStandardMaterial({ color: 0x14100e, roughness: .06, metalness: .15 }), hl = new THREE.MeshBasicMaterial({ color: 0xffffff }), ew = M(0xffffff, .2);
  const fx = type === 'fox', cat = type === 'cat', pig = type === 'pig', bun = type === 'bunny', bear = type === 'bear', panda = type === 'panda', rac = type === 'raccoon', cap = type === 'capybara', dn = type === 'dino';
@@ -1148,11 +1197,11 @@ function newRun() {
  endTmp(); seed = nextSeed || (Date.now() % 1000000); nextSeed = 0; runT = 0; gcur = 0; run = { j: [], ok: true, saved: false, coins: 0, classic: false };
  for (const m of pm.values()) scene.remove(m); pm.clear();
  plats = [newStart()]; cur = maxIdx = lastCp = 0; combo = perfects = jumps = 0; lives = 3; updHearts();
- nextGiftIdx = 10; doubleCoins = 0; if (balMesh) balMesh.visible = false;
+ nextGiftIdx = 10; doubleCoins = 0; airCh = false; airJumpsUsed = 0; if (balMesh) balMesh.visible = false;
  ensure(); respawn(); ghostInit(); hud();
 }
 
-function respawn() { endTmp();
+function respawn() { endTmp(); airCh = false; airJumpsUsed = 0;
  const A = plats[cur]; pos.x = A.x; pos.y = A.y; pos.z = A.z; ph = 'IDLE'; fox.rotation.set(0, fox.rotation.y, 0); body.scale.set(1, 1, 1); body.rotation.set(0, 0, 0); body.position.set(0, 0, 0); combo = 0; if (held) want = true; dbgLines();
 }
 
@@ -1166,11 +1215,15 @@ const hint = t => { if (jumps < 3 && ph !== 'AIR') msg(t, 500); };
 function startCharge() { ph = 'CHARGING'; t0 = performance.now(); pa = 0; cue = [0, 0, 0]; cP = 0; want = false; hint(T('hold')); }
 function cancelCharge() { if (ph === 'CHARGING') { ph = 'IDLE'; cP = 0; AU.charge(0, false); body.scale.set(1, 1, 1); } }
 function release() {
+ if (airCh) { releaseAir(); return; }
  const now = performance.now(), ms = Math.min(PH.maxMs, Math.max(0, Math.floor(now - t0 - pa))), A = plats[cur], Tl = plats[cur + 1], d = dirOf(A, Tl);
- res = JM.resolve(ms, { x: pos.x, y: pos.y, z: pos.z }, d, plats.slice(Math.max(0, cur - 1), cur + 5), Tl.idx); if (res.out === 'FALL' && AB_on('cat') && clawCh > 0) tryClaw(res, Tl); lastRes = res; run.j.push([Math.round(runT * 1000), ms]); ph = 'AIR'; jt = -.09; jumps++; AU.charge(0, false); AU.jump(); cs.shake = .12; emit(pos.x, pos.y + .1, pos.z, 26, [.8, .7, .55], 2.6, 1.6); dbgLines(res);
+ res = JM.resolve(ms, { x: pos.x, y: pos.y, z: pos.z }, d, plats.slice(Math.max(0, cur - 1), cur + 5), Tl.idx);
+ if (res.out === 'FALL' && AB_on('cat') && clawCh > 0) tryClaw(res, Tl);
+ lastRes = res; run.j.push([Math.round(runT * 1000), ms]); ph = 'AIR'; jt = -.09; jumps++; AU.charge(0, false); AU.jump(); cs.shake = .12; emit(pos.x, pos.y + .1, pos.z, 26, [.8, .7, .55], 2.6, 1.6); dbgLines(res);
 }
 
 function onLand() {
+ airCh = false; airJumpsUsed = 0;
  const L = res.landed; ph = 'LANDING'; lt = 0; landZ = res.zone; pos.x = res.x; pos.y = res.claw ? res.cy : L.y; pos.z = res.z; const success = res.out === 'SUCCESS';
  if (success) {
   const skipped = L.idx > cur + 1; if (L.idx > cur) cur = L.idx; ensure(); if (L.idx > maxIdx) { qAdd('plat', L.idx - maxIdx); maxIdx = L.idx; if (mOf(L.idx) > save.best) save.best = mOf(L.idx); }
@@ -1207,8 +1260,8 @@ function gameOver() {
 }
 
 function inp(e) { if (app === 'PLAY') e(); }
-const down = () => inp(() => { if (paused || ph === 'DEAD') return; AU.init(); held = true; if (ph === 'IDLE') startCharge(); else if (ph === 'LANDING') want = true; });
-const up = () => { held = false; want = false; if (app === 'PLAY' && !paused && ph === 'CHARGING') release(); };
+const down = () => inp(() => { if (paused || ph === 'DEAD') return; AU.init(); held = true; if (ph === 'IDLE') startCharge(); else if (ph === 'LANDING') want = true; else if (AB_on('panda') && (ph === 'AIR' || ph === 'FALLING') && !airCh && airJumpsUsed < pandaAirMax()) startAirCharge(); });
+const up = () => { held = false; want = false; if (app === 'PLAY' && !paused) { if (airCh) releaseAir(); else if (ph === 'CHARGING') release(); } };
 addEventListener('pointerdown', e => { if (!e.target.closest('button') && !e.target.closest('span') && !e.target.closest('input')) down(); }); addEventListener('pointerup', up);
 addEventListener('pointercancel', () => { held = false; want = false; cancelCharge(); });
 addEventListener('keydown', e => { if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) down(); } else if (e.code === 'F3') { e.preventDefault(); toggleDbg(); } else if ((e.code === 'Escape' || e.code === 'KeyP') && app === 'PLAY' && ph !== 'DEAD') setPause(!paused); });
@@ -1230,7 +1283,7 @@ function toMenu() { renderQ();
  updateTexts(); if (!plats.length || lives <= 0) newRun();
 }
 
-function play(s) { AU.init(); AU.click(); const cls = !!(s || urlSeed); nextSeed = s || urlSeed; urlSeed = 0; newRun(); run.classic = cls; clawCh = 1; abM10 = abM20 = 0; cFrac = 0; if (AB_on('bear')) { lives = 6; updHearts(); } stompCount = dinoC = 0; giant = null; giantQ = false; gsc = 1; abHud(); app = 'PLAY'; show('menu', 0); show('go', 0); $('hud').style.display = 'block'; $('pz').style.display = 'block'; msg(T('hold'), 1200); }
+function play(s) { AU.init(); AU.click(); const cls = !!(s || urlSeed); nextSeed = s || urlSeed; urlSeed = 0; newRun(); run.classic = cls; clawCh = 1; abM10 = abM20 = 0; cFrac = 0; airCh = false; airJumpsUsed = 0; if (AB_on('bear')) { lives = 6; updHearts(); } stompCount = dinoC = 0; giant = null; giantQ = false; gsc = 1; abHud(); app = 'PLAY'; show('menu', 0); show('go', 0); $('hud').style.display = 'block'; $('pz').style.display = 'block'; msg(T('hold'), 1200); }
 
 function renderShop() {
  if (!THUMB._d) { THUMB._d = 1; try { makeThumbs(); } catch (e) { console.error(e); } }
@@ -1320,6 +1373,7 @@ function update(dt, now) {
    if (P > .45 && Math.random() < P * .5) emit(pos.x, pos.y + .2, pos.z, 1, [1, .8, .4], .9, 1.8, .5); if (ms > 350 && jumps < 3) hint(T('hold')); break;
   }
   case 'AIR': case 'FALLING': {
+   if (airCh) { airChargeStep(now); break; }
    jt += dt; const P = res.P;
    if (jt < 0) { const s = 1 - (-jt / .09); bs.set(1 + .25 * P * (1 - s) - .1 * s, 1 - .4 * P + (1.25 - 1 + .4 * P) * s, 1 + .25 * P * (1 - s) - .1 * s); }
    else {
