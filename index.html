@@ -388,7 +388,7 @@ const getVMax = () => PH.vMax;
 const pandaAirMax = () => AB_on('panda') ? (lv() >= 2 ? 2 : 1) : 0;
 const pandaAirPower = () => [0.78, 0.86, 0.94][lv() - 1];
 function startAirCharge() { if (airCh || pandaAirMax() <= airJumpsUsed || paused || !res) return; airCh = true; airT0 = performance.now(); airJT0 = jt; airPausedMs = 0; cP = 0; cue = [0,0,0]; AU.blip(420,.12,'triangle',.1,700); }
-function airChargeStep(now) { const ms = Math.max(0, Math.floor(now - airT0)); cP = curveP(ms); jt = airJT0 + ms * .001 * .3; AU.charge(cP,true); if(cP>=.4&&!cue[0]){cue[0]=1;vib(12);} if(cP>=.7&&!cue[1]){cue[1]=1;vib(20);} }
+function airChargeStep(now) { const ms = Math.max(0, Math.floor(now - airT0)); cP = curveP(ms); jt = airJT0 + ms * .001 * .3; if (res) { const q = pathAt(res, jt); pos.x = q.x; pos.y = q.y; pos.z = q.z; const vn = res.vy - PH.g * jt, rr = cl(vn / res.vy, -1, 1), sy = 1 + .14 * rr; body.scale.set(1 / Math.sqrt(sy), sy, 1 / Math.sqrt(sy)); body.rotation.x = -.4 * rr; } AU.charge(cP,true); if(cP>=.4&&!cue[0]){cue[0]=1;vib(12);} if(cP>=.7&&!cue[1]){cue[1]=1;vib(20);} }
 function releaseAir() { if(!airCh) return; const now=performance.now(), ms=Math.min(PH.maxMs,Math.max(0,Math.floor(now-airT0))); airCh=false; AU.charge(0,false); const tj=airJT0+ms*.001*.3; const tEnd=res.landed?res.t:res.tf; if(tj>=tEnd){jt=tEnd;return;} const q=pathAt(res,tj), A=plats[cur], Tl=plats[cur+1], d=dirOf(A,Tl); const r2=JM.resolve(Math.min(PH.maxMs,ms),{x:q.x,y:q.y,z:q.z},d,plats.slice(Math.max(0,cur-1),cur+5),Tl.idx,pandaAirPower()); res=r2; lastRes=r2; jt=0; ph='AIR'; airJumpsUsed++; run.ok=false; fox.rotation.x=0; abHud(); msg(T('air_msg'),700); AU.jump(); cs.shake=.12; emit(q.x,q.y+.1,q.z,30,[.9,.95,1],3.5,1.5); dbgLines(r2); }
 
 const JM = {
